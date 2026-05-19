@@ -81,31 +81,21 @@ No separate `__init__.html` is written — the package directory's
 --docs-dir PATH        Output directory (default: <project-root>/docs)
 --package NAME         Main code-base directory name when multiple candidates
                        exist (skips the interactive prompt)
---title TEXT           Site title (default: "Project Documentation")
---eyebrow TEXT         Small label rendered above the title
---subtitle TEXT        Paragraph rendered below the title
---command TEXT         Command displayed on the site index (default: pydoc-builder)
 --no-check-args        Skip the Google-style Args coverage check
 ```
 
 ### Example
 
 ```bash
-pydoc-builder \
-  --title "My Project" \
-  --eyebrow "Internal" \
-  --package src \
-  --command "uv run pydoc-builder"
+pydoc-builder --package src
 ```
 
 ## What it generates
 
-- `docs/index.html` — site entry point with a hero, "Main Package(s)", and
-  optional "Supplemental" section
-- `docs/api/index.html` — API reference index
-- `docs/api/<package>/index.html` — one package page per `__init__.py`
-  directory, with the `__init__.py` source dropdown, docstring, and child
-  listings
+- `docs/index.html` — project home; renders the main package directory
+  (its `__init__.py` source dropdown, docstring, and child listings)
+- `docs/api/<package>/<subpackage>/index.html` — one page per subpackage
+  `__init__.py`
 - `docs/api/<path>.html` — one page per non-`__init__` module
 - `docs/.nojekyll` — for GitHub Pages
 
@@ -132,7 +122,6 @@ build(BuildConfig(
     main_root=Path("src"),
     supplemental_roots=(Path("tests"),),
     extra_files=(Path("setup.py"),),
-    title="My Project",
 ))
 ```
 
@@ -150,7 +139,7 @@ src/pydoc_builder/
   highlighting.py  tokenize-based Python syntax highlighter
   rendering.py     API object rendering, class index, source dropdown
   navigation.py    sidebars, TOC, source tree
-  pages.py         site index, API index, directory and module pages
+  pages.py         home, directory and module pages
   layout.py        shared HTML / CSS / MathJax shell
   models.py        ApiObject, ModuleDoc
   utils.py         escape, rel_link, anchor, card, entry helpers

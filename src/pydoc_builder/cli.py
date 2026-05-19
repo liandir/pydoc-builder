@@ -39,10 +39,6 @@ def main(argv: list[str] | None = None) -> int:
         main_root=main_root,
         supplemental_roots=supplemental_roots,
         extra_files=tuple(layout.rogue_files),
-        title=args.title,
-        eyebrow=args.eyebrow,
-        subtitle=args.subtitle,
-        build_command=args.command,
         check_arg_docs=args.check_args,
     )
 
@@ -80,26 +76,6 @@ def _build_parser() -> argparse.ArgumentParser:
             "Name of the main code-base directory when multiple candidates exist. "
             "If omitted and more than one candidate is found, you will be prompted."
         ),
-    )
-    parser.add_argument(
-        "--title",
-        default="Project Documentation",
-        help='Page title used on the site index (default: "Project Documentation").',
-    )
-    parser.add_argument(
-        "--eyebrow",
-        default="",
-        help="Optional small label rendered above the site title (default: none).",
-    )
-    parser.add_argument(
-        "--subtitle",
-        default="Static documentation generated from Python docstrings.",
-        help="Paragraph rendered below the site title.",
-    )
-    parser.add_argument(
-        "--command",
-        default="pydoc-builder",
-        help="Command string displayed on the site index hero (default: pydoc-builder).",
     )
     parser.add_argument(
         "--no-check-args",

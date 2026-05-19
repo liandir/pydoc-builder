@@ -18,6 +18,7 @@ _CSS = """
       --field-name: #9a3412;
       --field-type: #6d28d9;
       --bg: #ffffff;
+      --heading-large: clamp(1.6rem, 3vw, 2.4rem);
     }
     * { box-sizing: border-box; }
     body {
@@ -29,7 +30,7 @@ _CSS = """
     a { color: var(--accent-dark); text-decoration: none; }
     a:hover { text-decoration: underline; }
     h1, h2, h3 { line-height: 1.18; margin: 0 0 0.7rem; }
-    h1 { font-size: clamp(2rem, 4vw, 3.8rem); max-width: 980px; }
+    h1 { font-size: var(--heading-large); max-width: 980px; }
     h2 { font-size: 1.35rem; margin-top: 2rem; }
     .inherits {
       display: block;
@@ -42,16 +43,6 @@ _CSS = """
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     }
     code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
-    .hero {
-      padding: 3vh min(7vw, 5rem) 2.5vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      border-bottom: 1px solid var(--line);
-      background: linear-gradient(180deg, #ffffff 0%, #eef8f6 100%);
-    }
-    .hero h1 { font-size: clamp(1.6rem, 3vw, 2.4rem); }
-    .hero p { max-width: 760px; font-size: 1.1rem; color: var(--muted); }
     .eyebrow {
       color: var(--accent-dark);
       font-weight: 700;
@@ -59,7 +50,7 @@ _CSS = """
       text-transform: uppercase;
       font-size: 0.78rem;
     }
-    section { padding: 2.5rem min(7vw, 5rem); }
+    section { padding: 0; }
     .module-list {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -95,13 +86,6 @@ _CSS = """
     .module-list.detailed li:not(.card) { display: flex; flex-direction: column; gap: 0.25rem; }
     .module-list span, .muted { color: var(--muted); }
     .directory-section { padding: 0; margin-top: 2rem; }
-    .crumbs {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.45rem;
-      margin: 1rem 0;
-      color: var(--muted);
-    }
     .split {
       display: flex;
       align-items: stretch;
@@ -130,7 +114,11 @@ _CSS = """
     }
     .side ul { list-style: none; padding: 0; margin: 0; }
     .side li { margin: 0.35rem 0; overflow-wrap: anywhere; }
-    .back { display: block; font-weight: 700; margin-bottom: 0.6rem; }
+    .back {
+      display: block;
+      font-weight: 700;
+      color: var(--accent-dark);
+    }
     .side-section {
       border-bottom: 1px solid var(--line);
       padding-bottom: 1rem;
@@ -141,17 +129,19 @@ _CSS = """
       margin-bottom: 0;
       padding-bottom: 0;
     }
+    .source-tree, .source-tree ul {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+    }
     .source-tree li {
       margin: 0.25rem 0;
-      padding-left: 0.65rem;
+    }
+    .source-tree li > ul {
+      margin-top: 0.3rem;
+      margin-left: 0.35rem;
+      padding-left: 0.7rem;
       border-left: 2px solid var(--line);
-    }
-    .source-tree .source-siblings {
-      margin-top: 0.35rem;
-    }
-    .source-tree .source-siblings li {
-      border-left: 0;
-      padding-left: 0;
     }
     .current-source {
       color: var(--ink);
@@ -307,12 +297,14 @@ _CSS = """
       flex: 1 1 auto;
       min-width: 0;
     }
+    .summary-heading h1,
     .summary-heading h2 {
       margin: 0;
-      font-size: 1.55rem;
       font-weight: 700;
       color: var(--ink);
     }
+    .summary-heading h1 { font-size: var(--heading-large); }
+    .summary-heading h2 { font-size: 1.55rem; }
     .api-object .api-object .summary-heading h2 {
       font-size: 1.25rem;
     }

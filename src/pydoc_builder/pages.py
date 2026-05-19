@@ -1,16 +1,15 @@
-"""Write the top-level pages: site index, API index, directories, modules."""
+"""Write the documentation pages: home, directory indexes, and per-module pages."""
 
 from __future__ import annotations
 
 import shutil
-from pathlib import Path
 
 from .config import BuildConfig
 from .docstrings import doc_block
 from .layout import page
 from .models import ModuleDoc
-from .navigation import global_sidebar, module_sidebar, package_sidebar
-from .rendering import class_index, package_source_dropdown, render_object
+from .navigation import sidebar
+from .rendering import class_index, heading_with_source, render_object
 from .utils import (
     all_directories,
     card,
@@ -18,7 +17,7 @@ from .utils import (
     escape,
     extra_file_modules,
     find_init_module,
-    main_entries,
+    main_package_dir,
     module_count,
     rel_link,
     summary,
@@ -36,29 +35,72 @@ def prepare_docs_dir(config: BuildConfig) -> None:
 
 
 def write_site_index(config: BuildConfig, modules: list[ModuleDoc]) -> None:
-    """Write the GitHub Pages entry point."""
+    """Write the project home page at ``docs/index.html``.
+
+    The home shows a project title, a single card linking to the main package
+    documentation, and a Supplemental Material section with cards for each
+    supplemental directory and rogue file.
+    """
 
     site_index = config.docs_dir / "index.html"
-    eyebrow_html = f'<p class="eyebrow">{escape(config.eyebrow)}</p>' if config.eyebrow else ""
-    body = f"""
-    {global_sidebar(config, site_index, modules)}
-    <main class="content">
-      <section class="hero">
-        {eyebrow_html}
-        <h1>{escape(config.title)}</h1>
+    main_dir = main_package_dir(config)
+    main_card = card(
+        rel_link(site_index, directory_index_path(config, main_dir)),
+        f"{main_dir.name}/",
+        f"{module_count(modules, main_dir)} modules",
+    )
+
+    supp_cards = [
+        card(
+            rel_link(site_index, directory_index_path(config, directory)),
+            f"{directory.as_posix()}/",
+            f"{module_count(modules, directory)} modules",
+        )
+        for directory in supplemental_entries(config)
+    ] + [
+        card(
+            rel_link(site_index, module.page_path),
+            module.source_rel.name,
+            summary(module.docstring),
+        )
+        for module in extra_file_modules(config, modules)
+    ]
+    supp_section = ""
+    if supp_cards:
+        supp_section = f"""
+      <section>
+        <h2>Supplemental Material</h2>
+        <ul class="module-list detailed">{"".join(supp_cards)}</ul>
       </section>
-      {_main_packages_section(config, modules, site_index)}
-      {_supplemental_section(config, modules, site_index)}
+        """
+
+    title = config.project_root.name
+    body = f"""
+    {sidebar(config, site_index, modules, current_rel=main_dir, is_module_page=False, mark_current=False)}
+    <main class="content">
+      <h1>{escape(title)}</h1>
+      <section>
+        <h2>Main Package Documentation</h2>
+        <ul class="module-list detailed">{main_card}</ul>
+      </section>
+      {supp_section}
     </main>
     """
-    site_index.write_text(page(config.title, body, layout="split"), encoding="utf-8")
+    site_index.write_text(page(title, body, layout="split"), encoding="utf-8")
 
 
 def write_directory_pages(config: BuildConfig, modules: list[ModuleDoc]) -> None:
-    """Write recursive directory index pages for the API reference."""
+    """Write directory index pages for every documented source directory.
+
+    Directories above the main package (e.g. a ``src/`` wrapper) are skipped
+    since they aren't reachable from the sidebar navigation tree.
+    """
 
     dirs = all_directories(modules)
+    valid_roots = [main_package_dir(config), *supplemental_entries(config)]
     for directory in dirs:
+        if not any(_is_under(directory, root) for root in valid_roots):
+            continue
         _write_directory_page(config, directory, modules, dirs)
 
 
@@ -75,68 +117,17 @@ def write_module_pages(config: BuildConfig, modules: list[ModuleDoc]) -> None:
         _write_module_page(config, module, modules, classes)
 
 
-def _main_packages_section(
-    config: BuildConfig, modules: list[ModuleDoc], from_path: Path
-) -> str:
-    """Render the site/API index section listing the project's main packages."""
+def _is_under(path, ancestor) -> bool:
+    """Return whether ``path`` equals ``ancestor`` or is a descendant of it."""
 
-    entries = main_entries(config)
-    if not entries:
-        return ""
-    rows = "\n".join(
-        card(
-            rel_link(from_path, directory_index_path(config, entry)),
-            entry.name,
-            f"{module_count(modules, entry)} modules",
-        )
-        for entry in entries
-    )
-    heading = "Main Package" if len(entries) == 1 else "Main Packages"
-    return f"""
-      <section>
-        <h2>{escape(heading)}</h2>
-        <ul class="module-list detailed">{rows}</ul>
-      </section>
-    """
-
-
-def _supplemental_section(
-    config: BuildConfig, modules: list[ModuleDoc], from_path: Path
-) -> str:
-    """Render the section listing supplemental directories and rogue files."""
-
-    dir_cards = [
-        card(
-            rel_link(from_path, directory_index_path(config, directory)),
-            f"{directory.as_posix()}/",
-            f"{module_count(modules, directory)} modules",
-        )
-        for directory in supplemental_entries(config)
-    ]
-    file_cards = [
-        card(
-            rel_link(from_path, module.page_path),
-            module.source_rel.name,
-            summary(module.docstring),
-        )
-        for module in extra_file_modules(config, modules)
-    ]
-    if not dir_cards and not file_cards:
-        return ""
-    rows = "\n".join(dir_cards + file_cards)
-    return f"""
-      <section>
-        <h2>Supplemental</h2>
-        <ul class="module-list detailed">{rows}</ul>
-      </section>
-    """
+    return path.parts[: len(ancestor.parts)] == ancestor.parts
 
 
 def _write_directory_page(
     config: BuildConfig,
-    directory: Path,
+    directory,
     modules: list[ModuleDoc],
-    dirs: set[Path],
+    dirs: set,
 ) -> None:
     """Write a directory index. When ``__init__.py`` is present, render its content."""
 
@@ -172,46 +163,34 @@ def _write_directory_page(
         )
         for module in child_modules
     )
-    if directory.parent != Path("."):
-        parent_link = (
-            f"<a class='back' href='{rel_link(current_path, directory_index_path(config, directory.parent))}'>"
-            f"Parent Directory</a>"
-        )
-    else:
-        parent_link = (
-            f"<a class='back' href='{rel_link(current_path, config.docs_dir / 'index.html')}'>Project Home</a>"
-        )
-
+    eyebrow = f"{directory.as_posix()}/"
     if init_module is not None:
         classes = class_index(modules)
-        init_source = package_source_dropdown(init_module.source_rel.name, init_module.full_source)
+        heading_label = init_module.module_name
+        heading_html = heading_with_source(
+            f"<h1>{escape(heading_label)}</h1>",
+            init_module.full_source,
+        )
         init_docs = doc_block(init_module.docstring)
         init_objects = "\n".join(
             render_object(obj, init_module, classes) for obj in init_module.objects
         )
-        heading_label = init_module.module_name
-        eyebrow = f"{directory.as_posix()}/"
+        toc_objects = init_module.objects
     else:
-        init_source = ""
+        heading_html = f"<h1>{escape(directory.as_posix())}/</h1>"
         init_docs = ""
         init_objects = ""
-        heading_label = f"{directory.as_posix()}/"
-        eyebrow = f"{directory.as_posix()}/"
+        toc_objects = None
 
     body = f"""
-    {package_sidebar(config, current_path, directory, init_module, modules)}
+    {sidebar(config, current_path, modules, current_rel=directory, is_module_page=False, toc_objects=toc_objects)}
     <main class="content">
       <p class="eyebrow">{escape(eyebrow)}</p>
-      <h1>{escape(heading_label)}</h1>
-      <div class="crumbs">
-        <a href="{rel_link(current_path, config.docs_dir / 'index.html')}">Project Home</a>
-      </div>
-      {parent_link}
-      {init_source}
+      {heading_html}
       {init_docs}
       {init_objects}
       <section class="directory-section">
-        <h2>Subpackages and Directories</h2>
+        <h2>Subpackages</h2>
         <ul class="module-list detailed">{child_dir_links or '<li><span>None.</span></li>'}</ul>
       </section>
       <section class="directory-section">
@@ -236,7 +215,7 @@ def _write_module_page(
     module.page_path.parent.mkdir(parents=True, exist_ok=True)
     objects = "\n".join(render_object(obj, module, classes) for obj in module.objects)
     body = f"""
-    {module_sidebar(config, module, modules)}
+    {sidebar(config, module.page_path, modules, current_rel=module.source_rel, is_module_page=True, toc_objects=module.objects)}
     <main class="content">
       <p class="eyebrow">{escape(module.source_rel.as_posix())}</p>
       <h1>{escape(module.module_name)}</h1>

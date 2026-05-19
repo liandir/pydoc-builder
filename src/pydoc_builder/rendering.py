@@ -21,47 +21,15 @@ def render_object(
     return f"""
     <article class="api-object" id="{escape(obj.anchor)}">
       <div class="object-meta">{escape(obj.kind)} · line {obj.lineno}</div>
-      {_heading_with_source(obj.source, heading, obj.lineno)}
+      {heading_with_source(heading, obj.source, obj.lineno)}
       {doc_block(obj.docstring)}
       {children}
     </article>
     """
 
 
-def package_source_dropdown(label: str, source: str) -> str:
-    """Render an ``__init__.py`` source body inside a collapsed dropdown."""
-
-    if not source.strip():
-        return ""
-    line_count = source.count("\n") + (0 if source.endswith("\n") else 1)
-    gutter = "\n".join(str(i) for i in range(1, max(line_count, 1) + 1))
-    return (
-        '<details class="source-block">'
-        '<summary>'
-        f'<div class="summary-heading"><span class="package-source-label">{escape(label)}</span></div>'
-        '<span class="source-toggle">Source<span class="source-caret">▸</span></span>'
-        '</summary>'
-        '<div class="source-pane">'
-        f'<pre class="source-gutter" aria-hidden="true">{gutter}</pre>'
-        f'<pre class="source-code"><code>{highlight_python(source)}</code></pre>'
-        '</div>'
-        '</details>'
-    )
-
-
-def class_index(modules: list[ModuleDoc]) -> dict[str, tuple[ModuleDoc, ApiObject]]:
-    """Return a unique-name index of documented classes."""
-
-    candidates: dict[str, list[tuple[ModuleDoc, ApiObject]]] = {}
-    for module in modules:
-        for obj in iter_objects(module.objects):
-            if obj.kind == "class":
-                candidates.setdefault(obj.name, []).append((module, obj))
-    return {name: values[0] for name, values in candidates.items() if len(values) == 1}
-
-
-def _heading_with_source(source: str, heading_html: str, start_lineno: int) -> str:
-    """Wrap the object heading in a <details> that reveals its source on click.
+def heading_with_source(heading_html: str, source: str, start_lineno: int = 1) -> str:
+    """Wrap a heading in a <details> that reveals its source on click.
 
     The body uses a two-column layout: a non-selectable line-number gutter and
     the highlighted source. Keeping the gutter in its own ``<pre>`` means it
@@ -84,6 +52,17 @@ def _heading_with_source(source: str, heading_html: str, start_lineno: int) -> s
         '</div>'
         '</details>'
     )
+
+
+def class_index(modules: list[ModuleDoc]) -> dict[str, tuple[ModuleDoc, ApiObject]]:
+    """Return a unique-name index of documented classes."""
+
+    candidates: dict[str, list[tuple[ModuleDoc, ApiObject]]] = {}
+    for module in modules:
+        for obj in iter_objects(module.objects):
+            if obj.kind == "class":
+                candidates.setdefault(obj.name, []).append((module, obj))
+    return {name: values[0] for name, values in candidates.items() if len(values) == 1}
 
 
 def _object_heading(

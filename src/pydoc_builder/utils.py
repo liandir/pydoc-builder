@@ -84,21 +84,25 @@ def all_directories(modules: list[ModuleDoc]) -> set[Path]:
     return dirs
 
 
-def main_entries(config: BuildConfig) -> list[Path]:
-    """Return the project-rel directories that represent the main packages.
+def main_package_dir(config: BuildConfig) -> Path:
+    """Return the project-rel directory that holds the main modules.
 
-    If ``main_root`` is itself a package, the single returned entry is the
-    main package. If ``main_root`` is a wrapper (no ``__init__.py`` at its
-    root, e.g. ``src/``), its immediate child packages are returned instead.
+    If ``main_root`` is itself a package, that is the main package directory.
+    If ``main_root`` is a wrapper (e.g. ``src/``) containing a single child
+    package, that child is the main package directory. Otherwise falls back
+    to ``main_root`` itself.
     """
 
     if is_package(config.main_root):
-        return [config.main_root.relative_to(config.project_root)]
-    return [
+        return config.main_root.relative_to(config.project_root)
+    packages = [
         (config.main_root / child.name).relative_to(config.project_root)
         for child in sorted(config.main_root.iterdir())
         if child.is_dir() and is_package(child)
     ]
+    if len(packages) == 1:
+        return packages[0]
+    return config.main_root.relative_to(config.project_root)
 
 
 def supplemental_entries(config: BuildConfig) -> list[Path]:
