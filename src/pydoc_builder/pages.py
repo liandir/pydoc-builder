@@ -7,6 +7,7 @@ import shutil
 from .config import BuildConfig
 from .docstrings import doc_block
 from .layout import page
+from .markdown import render_markdown
 from .models import ModuleDoc
 from .navigation import sidebar
 from .rendering import class_index, heading_with_source, render_object
@@ -75,10 +76,13 @@ def write_site_index(config: BuildConfig, modules: list[ModuleDoc]) -> None:
         """
 
     title = config.project_root.name
+    readme_section = _readme_section(config)
+    hero = "" if readme_section else f'<div class="home-hero"><h1>{escape(title)}</h1></div>'
     body = f"""
     {sidebar(config, site_index, modules, current_rel=main_dir, is_module_page=False, mark_current=False)}
     <main class="content">
-      <div class="home-hero"><h1>{escape(title)}</h1></div>
+      {hero}
+      {readme_section}
       <section>
         <h2>Main Package Documentation</h2>
         <ul class="module-list detailed">{main_card}</ul>
@@ -87,6 +91,16 @@ def write_site_index(config: BuildConfig, modules: list[ModuleDoc]) -> None:
     </main>
     """
     site_index.write_text(page(title, body, layout="split"), encoding="utf-8")
+
+
+def _readme_section(config: BuildConfig) -> str:
+    """Render the project's README as an HTML section if one is present."""
+
+    for name in ("README.md", "readme.md", "Readme.md"):
+        path = config.project_root / name
+        if path.is_file():
+            return f'<section class="readme">{render_markdown(path.read_text(encoding="utf-8"))}</section>'
+    return ""
 
 
 def write_directory_pages(config: BuildConfig, modules: list[ModuleDoc]) -> None:

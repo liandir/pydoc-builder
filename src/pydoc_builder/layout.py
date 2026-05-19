@@ -32,14 +32,49 @@ _CSS = """
     h1, h2, h3 { line-height: 1.18; margin: 0 0 0.7rem; }
     h1 { font-size: var(--heading-large); max-width: 980px; }
     h2 { font-size: 1.35rem; margin-top: 2rem; }
-    .home-hero {
-      background: linear-gradient(180deg, #f7fbfa 0%, #eaf5f3 100%);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 1.4rem 1.75rem;
-      margin-bottom: 1.75rem;
+    .home-hero { margin: 0 0 1.4rem; }
+    .home-hero h1,
+    .readme > h1:first-child {
+      font-size: var(--heading-large);
+      margin: 0 0 0.9rem;
+      max-width: none;
     }
-    .home-hero h1 { margin: 0; }
+    .readme {
+      margin: 0 0 1.75rem;
+      padding: 0;
+    }
+    .readme h1 { font-size: 1.55rem; margin-top: 1.4rem; max-width: none; }
+    .readme h2 { font-size: 1.3rem; margin-top: 1.4rem; }
+    .readme h3 { font-size: 1.1rem; margin-top: 1.2rem; }
+    .readme p { margin: 0.7rem 0; }
+    .readme ul, .readme ol { margin: 0.7rem 0; padding-left: 1.5rem; }
+    .readme li { margin: 0.25rem 0; }
+    .readme code {
+      background: var(--panel);
+      padding: 0.1em 0.32em;
+      border-radius: 4px;
+      font-size: 0.92em;
+    }
+    .readme pre {
+      background: var(--panel);
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      overflow-x: auto;
+      margin: 0.85rem 0;
+    }
+    .readme pre code { background: none; padding: 0; font-size: 0.92em; }
+    .readme blockquote {
+      border-left: 3px solid var(--accent);
+      padding: 0.1rem 0 0.1rem 0.9rem;
+      margin: 0.85rem 0;
+      color: var(--muted);
+    }
+    .readme hr {
+      border: 0;
+      border-top: 1px solid var(--line);
+      margin: 1.5rem 0;
+    }
     .inherits {
       display: block;
       margin-top: 0.25rem;
