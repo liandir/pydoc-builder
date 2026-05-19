@@ -245,7 +245,7 @@ _CSS = """
     }
     .doc-section {
       padding: 0;
-      margin-top: 1rem;
+      margin-top: 1.6rem;
     }
     .doc-section h3 {
       margin: 0 0 0.55rem;
