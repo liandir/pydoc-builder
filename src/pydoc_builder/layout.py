@@ -32,6 +32,14 @@ _CSS = """
     h1, h2, h3 { line-height: 1.18; margin: 0 0 0.7rem; }
     h1 { font-size: var(--heading-large); max-width: 980px; }
     h2 { font-size: 1.35rem; margin-top: 2rem; }
+    .home-hero {
+      background: linear-gradient(180deg, #f7fbfa 0%, #eaf5f3 100%);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.4rem 1.75rem;
+      margin-bottom: 1.75rem;
+    }
+    .home-hero h1 { margin: 0; }
     .inherits {
       display: block;
       margin-top: 0.25rem;
@@ -92,10 +100,10 @@ _CSS = """
       min-height: 100vh;
     }
     .side {
-      flex: 0 0 320px;
+      flex: 0 0 auto;
       width: 320px;
       min-width: 220px;
-      max-width: 520px;
+      max-width: 640px;
       position: sticky;
       top: 0;
       height: 100vh;
@@ -105,7 +113,10 @@ _CSS = """
       border-right: 1px solid var(--line);
       background: var(--panel);
     }
-    .side::-webkit-resizer { background: transparent; }
+    .side::-webkit-resizer {
+      background:
+        linear-gradient(135deg, transparent 45%, var(--muted) 45%, var(--muted) 55%, transparent 55%);
+    }
     .side h2 {
       margin: 0 0 0.55rem;
       color: var(--muted);
@@ -204,7 +215,7 @@ _CSS = """
     .doc-section h3 {
       margin: 0 0 0.55rem;
       color: var(--accent-dark);
-      font-size: 1rem;
+      font-size: 1.1rem;
     }
     .doc-fields {
       display: grid;

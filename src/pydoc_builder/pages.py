@@ -78,7 +78,7 @@ def write_site_index(config: BuildConfig, modules: list[ModuleDoc]) -> None:
     body = f"""
     {sidebar(config, site_index, modules, current_rel=main_dir, is_module_page=False, mark_current=False)}
     <main class="content">
-      <h1>{escape(title)}</h1>
+      <div class="home-hero"><h1>{escape(title)}</h1></div>
       <section>
         <h2>Main Package Documentation</h2>
         <ul class="module-list detailed">{main_card}</ul>
