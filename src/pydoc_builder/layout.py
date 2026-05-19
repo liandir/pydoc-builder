@@ -43,14 +43,14 @@ _CSS = """
     }
     code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
     .hero {
-      min-height: 46vh;
-      padding: 9vh min(7vw, 5rem) 5vh;
+      padding: 3vh min(7vw, 5rem) 2.5vh;
       display: flex;
       flex-direction: column;
       justify-content: center;
       border-bottom: 1px solid var(--line);
       background: linear-gradient(180deg, #ffffff 0%, #eef8f6 100%);
     }
+    .hero h1 { font-size: clamp(1.6rem, 3vw, 2.4rem); }
     .hero p { max-width: 760px; font-size: 1.1rem; color: var(--muted); }
     .eyebrow {
       color: var(--accent-dark);
@@ -312,6 +312,9 @@ _CSS = """
       font-size: 1.55rem;
       font-weight: 700;
       color: var(--ink);
+    }
+    .api-object .api-object .summary-heading h2 {
+      font-size: 1.25rem;
     }
     .source-toggle {
       flex: 0 0 auto;

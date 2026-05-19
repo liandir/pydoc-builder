@@ -5,7 +5,6 @@ from __future__ import annotations
 from .config import BuildConfig
 from .pages import (
     prepare_docs_dir,
-    write_api_index,
     write_directory_pages,
     write_module_pages,
     write_site_index,
@@ -30,7 +29,6 @@ def build(config: BuildConfig) -> int:
     prepare_docs_dir(config)
     write_module_pages(config, modules)
     write_directory_pages(config, modules)
-    write_api_index(config, modules)
     write_site_index(config, modules)
     (config.docs_dir / ".nojekyll").write_text("", encoding="utf-8")
     print(f"Wrote {len(modules)} API pages to {config.docs_dir}")

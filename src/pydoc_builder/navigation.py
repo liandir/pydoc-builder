@@ -59,8 +59,7 @@ def global_sidebar(
     return f"""
     <nav class="side">
       <div class="side-section">
-        <a class="back" href="{rel_link(page_path, config.docs_dir / 'index.html')}">Project Docs</a>
-        <a class="back" href="{rel_link(page_path, config.api_dir / 'index.html')}">API Index</a>
+        <a class="back" href="{rel_link(page_path, config.docs_dir / 'index.html')}">Project Home</a>
       </div>
       <div class="side-section">
         <h2>Packages</h2>
@@ -75,13 +74,10 @@ def global_sidebar(
 def module_sidebar(config: BuildConfig, module: ModuleDoc, modules: list[ModuleDoc]) -> str:
     """Render navigation and table of contents for a module page."""
 
-    directory_page = directory_index_path(config, module.source_rel.parent)
     return f"""
     <nav class="side">
       <div class="side-section">
-        <a class="back" href="{rel_link(module.page_path, config.docs_dir / 'index.html')}">Project Docs</a>
-        <a class="back" href="{rel_link(module.page_path, config.api_dir / 'index.html')}">API Index</a>
-        <a class="back" href="{rel_link(module.page_path, directory_page)}">Containing Directory</a>
+        <a class="back" href="{rel_link(module.page_path, config.docs_dir / 'index.html')}">Project Home</a>
       </div>
       <div class="side-section">
         <h2>Source</h2>

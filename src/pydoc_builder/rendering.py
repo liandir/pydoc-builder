@@ -21,7 +21,7 @@ def render_object(
     return f"""
     <article class="api-object" id="{escape(obj.anchor)}">
       <div class="object-meta">{escape(obj.kind)} · line {obj.lineno}</div>
-      {_heading_with_source(obj.source, heading)}
+      {_heading_with_source(obj.source, heading, obj.lineno)}
       {doc_block(obj.docstring)}
       {children}
     </article>
@@ -60,7 +60,7 @@ def class_index(modules: list[ModuleDoc]) -> dict[str, tuple[ModuleDoc, ApiObjec
     return {name: values[0] for name, values in candidates.items() if len(values) == 1}
 
 
-def _heading_with_source(source: str, heading_html: str) -> str:
+def _heading_with_source(source: str, heading_html: str, start_lineno: int) -> str:
     """Wrap the object heading in a <details> that reveals its source on click.
 
     The body uses a two-column layout: a non-selectable line-number gutter and
@@ -71,7 +71,7 @@ def _heading_with_source(source: str, heading_html: str) -> str:
     if not source.strip():
         return heading_html
     line_count = source.count("\n") + (0 if source.endswith("\n") else 1)
-    gutter = "\n".join(str(i) for i in range(1, max(line_count, 1) + 1))
+    gutter = "\n".join(str(i) for i in range(start_lineno, start_lineno + max(line_count, 1)))
     return (
         '<details class="source-block">'
         '<summary>'

@@ -46,31 +46,12 @@ def write_site_index(config: BuildConfig, modules: list[ModuleDoc]) -> None:
       <section class="hero">
         {eyebrow_html}
         <h1>{escape(config.title)}</h1>
-        <p>{escape(config.subtitle)}</p>
-        <p><code>{escape(config.build_command)}</code></p>
       </section>
       {_main_packages_section(config, modules, site_index)}
       {_supplemental_section(config, modules, site_index)}
     </main>
     """
     site_index.write_text(page(config.title, body, layout="split"), encoding="utf-8")
-
-
-def write_api_index(config: BuildConfig, modules: list[ModuleDoc]) -> None:
-    """Write an API-only index page."""
-
-    api_index = config.api_dir / "index.html"
-    body = f"""
-    {global_sidebar(config, api_index, modules)}
-    <main class="content">
-      <p class="eyebrow">Repository API</p>
-      <h1>API Reference</h1>
-      <p class="muted">Browse by package. Supplemental directories and loose files are listed below the main code base.</p>
-      {_main_packages_section(config, modules, api_index)}
-      {_supplemental_section(config, modules, api_index)}
-    </main>
-    """
-    api_index.write_text(page("API Reference", body, layout="split"), encoding="utf-8")
 
 
 def write_directory_pages(config: BuildConfig, modules: list[ModuleDoc]) -> None:
@@ -198,7 +179,7 @@ def _write_directory_page(
         )
     else:
         parent_link = (
-            f"<a class='back' href='{rel_link(current_path, config.api_dir / 'index.html')}'>API Index</a>"
+            f"<a class='back' href='{rel_link(current_path, config.docs_dir / 'index.html')}'>Project Home</a>"
         )
 
     if init_module is not None:
@@ -223,9 +204,7 @@ def _write_directory_page(
       <p class="eyebrow">{escape(eyebrow)}</p>
       <h1>{escape(heading_label)}</h1>
       <div class="crumbs">
-        <a href="{rel_link(current_path, config.docs_dir / 'index.html')}">Project Docs</a>
-        <span>/</span>
-        <a href="{rel_link(current_path, config.api_dir / 'index.html')}">API Reference</a>
+        <a href="{rel_link(current_path, config.docs_dir / 'index.html')}">Project Home</a>
       </div>
       {parent_link}
       {init_source}
