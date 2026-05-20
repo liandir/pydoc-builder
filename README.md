@@ -9,13 +9,13 @@ dependencies, only the Python standard library.
 From git, into an isolated tool environment:
 
 ```bash
-uv tool install git+https://github.com/<you>/pydoc-builder
+uv tool install git+https://github.com/liandir/pydoc-builder
 ```
 
 As a project dev dependency:
 
 ```bash
-uv add --dev git+https://github.com/<you>/pydoc-builder
+uv add --dev git+https://github.com/liandir/pydoc-builder
 ```
 
 Or locally from a checkout:
@@ -25,6 +25,85 @@ uv tool install /path/to/pydoc-builder
 ```
 
 Requires Python 3.10+.
+
+## Docstring conventions
+
+pydoc-builder renders docstrings in one of two modes, chosen automatically per
+docstring:
+
+- **Structured (Google-style)** — used when the docstring contains any of the
+  recognised section headings.
+- **Plain prose** — used otherwise; paragraphs render as `<p>`, and any
+  indented block becomes a literal `<pre>` code block.
+
+### Google-style sections
+
+A docstring is rendered as structured sections as soon as one of the following
+headings appears on its own line (case-insensitive, trailing colon required
+for the field sections):
+
+| Heading                              | Rendered as       |
+| ------------------------------------ | ----------------- |
+| `Args:`, `Arguments:`, `Parameters:` | Arguments table   |
+| `Returns:`                           | Returns table     |
+| `Yields:`                            | Yields table      |
+| `Raises:`                            | Raises table      |
+| `Example`, `Examples`                | Examples section  |
+
+Everything before the first heading is the summary and renders as prose.
+Field entries inside `Args:` / `Returns:` / `Yields:` / `Raises:` follow the
+Google form:
+
+```
+Args:
+    name (type): description that may wrap onto
+        the next indented line.
+    other_name: description without a type.
+
+Returns:
+    type: description. (The "name" slot is treated as the type
+        when only one token precedes the colon.)
+
+Raises:
+    ValueError: when the input is malformed.
+```
+
+Inside the `Examples` section, lines beginning with `>>>` or `...` are
+grouped into a doctest-style code block; intervening prose renders as
+paragraphs. Other indented blocks anywhere in the docstring are preserved
+verbatim as literal code.
+
+By default, every public callable (name not starting with `_`) must document
+each of its parameters in an `Args:` section, or the build fails with an
+`AssertionError`. Disable with `--no-check-args`.
+
+### MathJax
+
+Every generated page loads MathJax 3 (TeX → SVG) from a CDN, so LaTeX math in
+docstrings is typeset client-side. Both inline and display delimiters are
+configured:
+
+- Inline: `$ ... $` or `\( ... \)`
+- Display: `$$ ... $$` or `\[ ... \]`
+
+Display math written on its own lines is wrapped in a `<div class="math-block">`
+so it stays out of paragraph flow:
+
+```
+The Gaussian density is
+
+\[
+    f(x) = \frac{1}{\sigma \sqrt{2\pi}}
+           \exp\!\left(-\tfrac{(x-\mu)^2}{2\sigma^2}\right)
+\]
+
+and integrates to one over $\mathbb{R}$.
+```
+
+Inline math like `$\mathbb{R}$` is left untouched inside the surrounding
+`<p>` and rendered by MathJax in the browser. Because rendering happens
+client-side, the docs page works offline only if the MathJax CDN script is
+cached; otherwise math falls back to its raw TeX source.
 
 ## Usage
 
@@ -98,17 +177,6 @@ pydoc-builder --package src
   `__init__.py`
 - `docs/api/<path>.html` — one page per non-`__init__` module
 - `docs/.nojekyll` — for GitHub Pages
-
-## Conventions
-
-Docstrings are rendered as Google-style sections when any of the following
-headings are present: `Args:`, `Arguments:`, `Parameters:`, `Returns:`,
-`Yields:`, `Raises:`, `Example`/`Examples`. Other docstrings render as prose
-with indented blocks preserved as literal code.
-
-By default, every public callable (name not starting with `_`) must document
-each of its parameters in an `Args:` section, or the build fails with an
-`AssertionError`. Disable with `--no-check-args`.
 
 ## Programmatic use
 
