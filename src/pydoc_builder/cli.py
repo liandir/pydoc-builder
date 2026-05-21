@@ -12,7 +12,15 @@ from .discovery import ProjectLayout, discover_layout
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Parse arguments and build the documentation site."""
+    """Parse arguments and build the documentation site.
+
+    Args:
+        argv: Optional list of command-line arguments. ``None`` (the default)
+            uses ``sys.argv[1:]``.
+
+    Returns:
+        Process exit code: ``0`` on success, ``1`` if validation failed.
+    """
 
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -81,7 +89,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--no-check-args",
         dest="check_args",
         action="store_false",
-        help="Skip the Google-style Args coverage check for public callables.",
+        help="Skip the Google-style Args and Returns coverage check for public callables.",
     )
     parser.set_defaults(check_args=True)
     return parser

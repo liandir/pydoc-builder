@@ -42,7 +42,17 @@ class ProjectLayout:
 
 
 def discover_layout(project_root: Path, *, exclude: frozenset[Path] = frozenset()) -> ProjectLayout:
-    """Scan ``project_root`` immediate children and classify them."""
+    """Scan ``project_root`` immediate children and classify them.
+
+    Args:
+        project_root: Directory whose immediate children are inspected.
+        exclude: Resolved paths to skip during the scan (e.g. the docs output
+            directory).
+
+    Returns:
+        A ``ProjectLayout`` partitioning the children into main candidates,
+        supplemental directories, and rogue files.
+    """
 
     candidates: list[Path] = []
     supplemental: list[Path] = []
@@ -69,7 +79,14 @@ def discover_layout(project_root: Path, *, exclude: frozenset[Path] = frozenset(
 
 
 def is_package(directory: Path) -> bool:
-    """Return whether ``directory`` is a Python package (has ``__init__.py``)."""
+    """Return whether ``directory`` is a Python package (has ``__init__.py``).
+
+    Args:
+        directory: Filesystem directory to check.
+
+    Returns:
+        ``True`` if ``directory`` contains an ``__init__.py`` file.
+    """
 
     return (directory / "__init__.py").is_file()
 

@@ -39,7 +39,16 @@ _BUILTIN_TYPES = frozenset({
 
 
 def highlight_python(source: str) -> str:
-    """Render Python source as HTML with tokenize-based syntax classes."""
+    """Render Python source as HTML with tokenize-based syntax classes.
+
+    Args:
+        source: Python source code to tokenize and wrap in highlight spans.
+
+    Returns:
+        HTML-escaped source with ``<span class="tok-…">`` wrappers around
+        each highlighted token. Falls back to plain escaped text when the
+        input cannot be tokenized.
+    """
 
     try:
         tokens = list(tokenize.generate_tokens(io.StringIO(source).readline))

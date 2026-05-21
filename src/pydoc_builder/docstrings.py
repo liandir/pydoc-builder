@@ -2,11 +2,24 @@
 
 from __future__ import annotations
 
+import re
+
 from .utils import escape, inline_code
 
 
+_FIELD_HEAD = re.compile(r"^[A-Za-z_]\w*(\s*\([^)]*\))?\s*:")
+
+
 def doc_block(docstring: str) -> str:
-    """Render a docstring with structured sections when available."""
+    """Render a docstring with structured sections when available.
+
+    Args:
+        docstring: Raw docstring text extracted from a module or API object.
+
+    Returns:
+        HTML fragment for the rendered docstring, or a muted placeholder
+        when ``docstring`` is empty.
+    """
 
     if not docstring:
         return '<p class="muted">No docstring.</p>'
@@ -16,12 +29,22 @@ def doc_block(docstring: str) -> str:
 
 
 def split_docstring_sections(docstring: str) -> dict[str, list[str]]:
-    """Split a docstring into summary and named structured sections."""
+    """Split a docstring into summary and named structured sections.
+
+    Args:
+        docstring: Raw docstring text to partition by Google-style headings.
+
+    Returns:
+        A mapping from section name (``summary``, ``args``, ``returns``,
+        ``yields``, ``raises``, ``examples``, ``other``) to the lines that
+        belong to it.
+    """
 
     aliases = {
         "args:": "args",
         "arguments:": "args",
         "parameters:": "args",
+        "attributes:": "attributes",
         "returns:": "returns",
         "yields:": "yields",
         "raises:": "raises",
@@ -29,6 +52,7 @@ def split_docstring_sections(docstring: str) -> dict[str, list[str]]:
     sections: dict[str, list[str]] = {
         "summary": [],
         "args": [],
+        "attributes": [],
         "examples": [],
         "returns": [],
         "yields": [],
@@ -59,7 +83,14 @@ def split_docstring_sections(docstring: str) -> dict[str, list[str]]:
 
 
 def parse_doc_fields(lines: list[str]) -> list[dict[str, str]]:
-    """Parse indented Google-style field lines."""
+    """Parse indented Google-style field lines.
+
+    Args:
+        lines: Lines from a section body (e.g. the body of an ``Args:`` block).
+
+    Returns:
+        One dict per field with ``name``, ``type``, and ``description`` keys.
+    """
 
     fields: list[dict[str, str]] = []
     current: dict[str, str] | None = None
@@ -90,7 +121,7 @@ def _plain_doc_block(docstring: str) -> str:
 def _has_structured_sections(docstring: str) -> bool:
     """Return whether a docstring contains renderable Google-style sections."""
 
-    headings = {"args:", "arguments:", "parameters:", "returns:", "yields:", "raises:"}
+    headings = {"args:", "arguments:", "parameters:", "attributes:", "returns:", "yields:", "raises:"}
     return any(line.strip().lower() in headings | {"example", "examples"} for line in docstring.splitlines())
 
 
@@ -105,6 +136,8 @@ def _structured_doc_block(docstring: str) -> str:
         parts.append(_render_examples_section(sections["examples"]))
     if sections["args"]:
         parts.append(_render_field_section("Arguments", sections["args"]))
+    if sections["attributes"]:
+        parts.append(_render_field_section("Attributes", sections["attributes"]))
     if sections["returns"]:
         parts.append(_render_field_section("Returns", sections["returns"]))
     if sections["yields"]:
@@ -253,9 +286,18 @@ def _parse_return_fields(lines: list[str]) -> list[dict[str, str]]:
 
 
 def _looks_like_field(line: str) -> bool:
-    """Return whether a line looks like a docstring field."""
+    """Return whether a line looks like a docstring field.
 
-    return ":" in line
+    Args:
+        line: A stripped section line; field starts begin with an identifier
+            (optionally followed by ``(type)``) and a colon.
+
+    Returns:
+        ``True`` when the line begins a new field, ``False`` when it should
+        be treated as a continuation of the previous field's description.
+    """
+
+    return bool(_FIELD_HEAD.match(line))
 
 
 def _parse_doc_field(line: str) -> dict[str, str]:

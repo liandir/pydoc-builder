@@ -16,6 +16,7 @@ class ApiObject:
     anchor: str
     bases: list[str]
     params: list[str]
+    returns: str
     docstring: str
     source: str
     lineno: int

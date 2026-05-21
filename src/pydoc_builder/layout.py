@@ -75,6 +75,21 @@ _CSS = """
       border-top: 1px solid var(--line);
       margin: 1.5rem 0;
     }
+    .readme table {
+      border-collapse: collapse;
+      margin: 0.85rem 0;
+      font-size: 0.95em;
+    }
+    .readme th, .readme td {
+      border: 1px solid var(--line);
+      padding: 0.4rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    .readme thead th {
+      background: var(--panel);
+      font-weight: 600;
+    }
     .inherits {
       display: block;
       margin-top: 0.25rem;
@@ -86,6 +101,18 @@ _CSS = """
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     }
     code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    code {
+      background: #f0f1f3;
+      padding: 0.05em 0.35em;
+      border-radius: 4px;
+      font-size: 0.92em;
+    }
+    pre code, .source-code code, .example-code code {
+      background: none;
+      padding: 0;
+      border-radius: 0;
+      font-size: inherit;
+    }
     .eyebrow {
       color: var(--accent-dark);
       font-weight: 700;
@@ -194,10 +221,11 @@ _CSS = """
       font-weight: 700;
     }
     .py-icon {
-      width: 0.95em;
-      height: 0.95em;
-      vertical-align: -0.15em;
+      width: 0.8em;
+      height: 0.8em;
+      vertical-align: -0.1em;
       margin-right: 0.35em;
+      color: #3776AB;
       flex-shrink: 0;
     }
     .toc-list ul {
@@ -454,7 +482,17 @@ _MATHJAX_HEAD = r"""  <script>
 
 
 def page(title: str, body: str, *, layout: str = "split") -> str:
-    """Wrap page content in shared HTML, CSS, and metadata."""
+    """Wrap page content in shared HTML, CSS, and metadata.
+
+    Args:
+        title: Text used for the ``<title>`` element.
+        body: Pre-rendered HTML inserted inside ``<body>``.
+        layout: Body class controlling the page's top-level layout
+            (``"split"`` or ``"single"``).
+
+    Returns:
+        A complete HTML document as a string, ready to be written to disk.
+    """
 
     return (
         "<!doctype html>\n"

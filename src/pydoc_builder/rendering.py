@@ -14,7 +14,17 @@ def render_object(
     module: ModuleDoc,
     class_index: dict[str, tuple[ModuleDoc, ApiObject]],
 ) -> str:
-    """Render an extracted class or function."""
+    """Render an extracted class or function.
+
+    Args:
+        obj: The API object (class, function, or method) to render.
+        module: The module ``obj`` belongs to; used to compute cross-links.
+        class_index: Lookup of unique class names to ``(module, object)`` used
+            to link base classes back to their definitions.
+
+    Returns:
+        The ``<article>`` HTML fragment for ``obj`` and its nested children.
+    """
 
     children = "\n".join(render_object(child, module, class_index) for child in obj.children)
     heading = _object_heading(obj, module, class_index)
@@ -34,6 +44,16 @@ def heading_with_source(heading_html: str, source: str, start_lineno: int = 1) -
     The body uses a two-column layout: a non-selectable line-number gutter and
     the highlighted source. Keeping the gutter in its own ``<pre>`` means it
     aligns line-for-line with the code without leaking into copy/paste.
+
+    Args:
+        heading_html: Pre-rendered HTML for the heading shown in the summary.
+        source: Python source displayed when the ``<details>`` is expanded.
+        start_lineno: First line number used to label the gutter, matching
+            the object's location in the original file.
+
+    Returns:
+        A ``<details>`` HTML fragment, or ``heading_html`` unchanged when
+        ``source`` is empty.
     """
 
     if not source.strip():
@@ -55,7 +75,15 @@ def heading_with_source(heading_html: str, source: str, start_lineno: int = 1) -
 
 
 def class_index(modules: list[ModuleDoc]) -> dict[str, tuple[ModuleDoc, ApiObject]]:
-    """Return a unique-name index of documented classes."""
+    """Return a unique-name index of documented classes.
+
+    Args:
+        modules: All parsed modules to scan for top-level and nested classes.
+
+    Returns:
+        A mapping from class name to ``(module, object)``. Names that occur
+        in more than one place are omitted to avoid ambiguous base-class links.
+    """
 
     candidates: dict[str, list[tuple[ModuleDoc, ApiObject]]] = {}
     for module in modules:

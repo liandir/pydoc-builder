@@ -12,7 +12,15 @@ from .utils import anchor
 
 
 def parse_modules(config: BuildConfig) -> list[ModuleDoc]:
-    """Parse every Python source file referenced by ``config``."""
+    """Parse every Python source file referenced by ``config``.
+
+    Args:
+        config: Build configuration listing the main root, supplemental roots,
+            and extra rogue files to parse.
+
+    Returns:
+        One ``ModuleDoc`` per discovered ``.py`` file, in discovery order.
+    """
 
     main_name_base = config.main_root.parent if is_package(config.main_root) else config.main_root
 
@@ -28,7 +36,15 @@ def parse_modules(config: BuildConfig) -> list[ModuleDoc]:
 
 
 def iter_objects(objects: list[ApiObject]) -> list[ApiObject]:
-    """Return a flattened list of documented objects."""
+    """Return a flattened list of documented objects.
+
+    Args:
+        objects: Top-level API objects whose nested children should be walked
+            recursively.
+
+    Returns:
+        A depth-first flattening of ``objects`` including every nested child.
+    """
 
     flattened: list[ApiObject] = []
     for obj in objects:
@@ -83,6 +99,7 @@ def _parse_object(node: ast.AST, source_text: str, parent: str = "") -> ApiObjec
         kind = "class"
         bases = [ast.unparse(base) for base in [*node.bases, *[kw.value for kw in node.keywords]]]
         params: list[str] = []
+        returns = ""
         children = [
             _parse_object(child, source_text, qualname)
             for child in node.body
@@ -92,6 +109,9 @@ def _parse_object(node: ast.AST, source_text: str, parent: str = "") -> ApiObjec
         kind = ("async " if isinstance(node, ast.AsyncFunctionDef) else "") + ("method" if parent else "function")
         bases = []
         params = _documentable_arg_names(node.args)
+        returns = "" if _is_property(node) else (
+            ast.unparse(node.returns) if node.returns is not None else ""
+        )
 
     return ApiObject(
         kind=kind,
@@ -100,11 +120,25 @@ def _parse_object(node: ast.AST, source_text: str, parent: str = "") -> ApiObjec
         anchor=anchor(qualname),
         bases=bases,
         params=params,
+        returns=returns,
         docstring=ast.get_docstring(node) or "",
         source=ast.get_source_segment(source_text, node) or "",
         lineno=node.lineno,
         children=children,
     )
+
+
+def _is_property(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """Return whether a function node is decorated as a ``@property``.
+
+    Args:
+        node: Function or async function AST node.
+    """
+
+    for decorator in node.decorator_list:
+        if isinstance(decorator, ast.Name) and decorator.id == "property":
+            return True
+    return False
 
 
 def _is_documentable(node: ast.AST) -> bool:

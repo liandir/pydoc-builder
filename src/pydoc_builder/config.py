@@ -22,7 +22,8 @@ class BuildConfig:
         extra_files: Loose ``.py`` files (typically in the project root) that
             should be documented individually.
         check_arg_docs: When true, fail the build if any public callable
-            has an undocumented argument.
+            has an undocumented argument or a non-``None`` return annotation
+            without a ``Returns:`` (or ``Yields:``) section.
     """
 
     project_root: Path

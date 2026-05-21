@@ -27,7 +27,11 @@ from .utils import (
 
 
 def prepare_docs_dir(config: BuildConfig) -> None:
-    """Create a clean API output directory while preserving hand-written docs."""
+    """Create a clean API output directory while preserving hand-written docs.
+
+    Args:
+        config: Build configuration whose ``api_dir`` should be reset.
+    """
 
     api_dir = config.api_dir
     if api_dir.exists():
@@ -41,6 +45,10 @@ def write_site_index(config: BuildConfig, modules: list[ModuleDoc]) -> None:
     The home shows a project title, a single card linking to the main package
     documentation, and a Supplemental Material section with cards for each
     supplemental directory and rogue file.
+
+    Args:
+        config: Build configuration providing project metadata and paths.
+        modules: All parsed modules used to populate the home page links.
     """
 
     site_index = config.docs_dir / "index.html"
@@ -108,6 +116,11 @@ def write_directory_pages(config: BuildConfig, modules: list[ModuleDoc]) -> None
 
     Directories above the main package (e.g. a ``src/`` wrapper) are skipped
     since they aren't reachable from the sidebar navigation tree.
+
+    Args:
+        config: Build configuration providing the docs output directory.
+        modules: All parsed modules; their parents define the directories that
+            receive an index page.
     """
 
     dirs = all_directories(modules)
@@ -122,6 +135,11 @@ def write_module_pages(config: BuildConfig, modules: list[ModuleDoc]) -> None:
     """Write one API page per parsed module, excluding ``__init__.py`` files.
 
     ``__init__.py`` content lives on the containing directory's package page.
+
+    Args:
+        config: Build configuration providing the docs output directory.
+        modules: All parsed modules; each non-``__init__`` module yields one
+            API page.
     """
 
     classes = class_index(modules)
