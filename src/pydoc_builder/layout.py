@@ -15,8 +15,8 @@ _CSS = """
       --accent: #0f766e;
       --accent-dark: #115e59;
       --code: #263238;
-      --field-name: #9a3412;
-      --field-type: #6d28d9;
+      --field-name: #795e26;
+      --field-type: #267f99;
       --bg: #ffffff;
       --heading-large: clamp(1.6rem, 3vw, 2.4rem);
     }
@@ -178,9 +178,9 @@ _CSS = """
     }
     .side {
       flex: 0 0 auto;
-      width: 320px;
-      min-width: 220px;
-      max-width: 640px;
+      width: 280px;
+      min-width: 200px;
+      max-width: 600px;
       position: sticky;
       top: 0;
       height: 100vh;
@@ -334,6 +334,9 @@ _CSS = """
       margin: 0;
       min-width: 0;
     }
+    .doc-field dd > :first-child { margin-top: 0; }
+    .doc-field dd > :last-child  { margin-bottom: 0; }
+    .doc-field dd ul, .doc-field dd ol { margin: 0.3rem 0; padding-left: 1.4rem; }
     .doc-field-name {
       color: var(--field-name);
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
@@ -472,6 +475,51 @@ _CSS = """
     .tok-builtin-type { color: #267f99; }
     .tok-builtin-func { color: #795e26; }
     .tok-punct        { color: #000000; }
+    /* VS Code Dark Modern palette */
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #1f1f1f;
+      --ink: #d4d4d4;
+      --muted: #858585;
+      --line: #2b2b2b;
+      --panel: #181818;
+      --accent: #4FC1FF;
+      --accent-dark: #9CDCFE;
+      --field-name: #DCDCAA;
+      --field-type: #4EC9B0;
+    }
+    :root[data-theme="dark"] code { background: #2d2d2d; }
+    :root[data-theme="dark"] .doc-field-type::before,
+    :root[data-theme="dark"] .doc-field-type::after { color: #9CA3AF; }
+    :root[data-theme="dark"] .tok-keyword      { color: #569CD6; }
+    :root[data-theme="dark"] .tok-string       { color: #CE9178; }
+    :root[data-theme="dark"] .tok-number       { color: #B5CEA8; }
+    :root[data-theme="dark"] .tok-comment      { color: #6A9955; font-style: italic; }
+    :root[data-theme="dark"] .tok-def-name     { color: #DCDCAA; }
+    :root[data-theme="dark"] .tok-class-name   { color: #4EC9B0; }
+    :root[data-theme="dark"] .tok-self         { color: #569CD6; }
+    :root[data-theme="dark"] .tok-builtin-type { color: #4EC9B0; }
+    :root[data-theme="dark"] .tok-builtin-func { color: #DCDCAA; }
+    :root[data-theme="dark"] .tok-punct        { color: #D4D4D4; }
+    .theme-toggle {
+      position: fixed; top: 0.85rem; right: 1rem; z-index: 50;
+      display: inline-flex; align-items: center;
+      width: 46px; height: 24px; padding: 0;
+      background: var(--panel); border: 1px solid var(--line);
+      border-radius: 999px; cursor: pointer;
+    }
+    .theme-toggle .sun, .theme-toggle .moon {
+      position: absolute; width: 12px; height: 12px; color: var(--muted);
+    }
+    .theme-toggle .sun  { left: 6px; }
+    .theme-toggle .moon { right: 6px; }
+    .theme-toggle .thumb {
+      position: absolute; top: 2px; left: 2px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--bg); border: 1px solid var(--line);
+      transform: translateX(0); transition: transform 0.15s ease;
+    }
+    :root[data-theme="dark"] .theme-toggle .thumb { transform: translateX(22px); }
     @media (max-width: 860px) {
       .split { display: block; }
       .side {
@@ -505,6 +553,45 @@ _MATHJAX_HEAD = r"""  <script>
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>"""
 
 
+_THEME_BOOT = r"""  <script>
+    (function(){
+      try {
+        var saved = localStorage.getItem('theme');
+        var dark = saved ? saved === 'dark'
+          : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (dark) document.documentElement.dataset.theme = 'dark';
+      } catch (e) {}
+      window.__toggleTheme = function(){
+        var html = document.documentElement;
+        var next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+        if (next === 'dark') html.dataset.theme = 'dark';
+        else delete html.dataset.theme;
+        try { localStorage.setItem('theme', next); } catch (e) {}
+        var btn = document.querySelector('.theme-toggle');
+        if (btn) btn.setAttribute('aria-pressed', String(next === 'dark'));
+      };
+    })();
+  </script>"""
+
+
+_THEME_TOGGLE = (
+    '<button class="theme-toggle" type="button" aria-label="Toggle dark mode" '
+    'aria-pressed="false" onclick="__toggleTheme()">'
+    '<svg class="sun" viewBox="0 0 16 16" aria-hidden="true">'
+    '<circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>'
+    '<path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.1 3.1l1.4 1.4M11.5 11.5l1.4 1.4'
+    'M3.1 12.9l1.4-1.4M11.5 4.5l1.4-1.4" stroke="currentColor" stroke-width="1.5" '
+    'stroke-linecap="round"/>'
+    '</svg>'
+    '<svg class="moon" viewBox="0 0 16 16" aria-hidden="true">'
+    '<path d="M13 9.5A5.5 5.5 0 1 1 6.5 3a4.5 4.5 0 0 0 6.5 6.5z" '
+    'fill="currentColor"/>'
+    '</svg>'
+    '<span class="thumb"></span>'
+    '</button>'
+)
+
+
 def page(title: str, body: str, *, layout: str = "split") -> str:
     """Wrap page content in shared HTML, CSS, and metadata.
 
@@ -525,10 +612,12 @@ def page(title: str, body: str, *, layout: str = "split") -> str:
         '  <meta charset="utf-8">\n'
         '  <meta name="viewport" content="width=device-width, initial-scale=1">\n'
         f"  <title>{escape(title)}</title>\n"
+        f"{_THEME_BOOT}\n"
         f"{_MATHJAX_HEAD}\n"
         f"  <style>{_CSS}  </style>\n"
         "</head>\n"
         f'<body class="{escape(layout)}">\n'
+        f"{_THEME_TOGGLE}\n"
         f"{body}\n"
         "</body>\n"
         "</html>\n"

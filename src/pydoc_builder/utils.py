@@ -100,34 +100,54 @@ def inline_markup(
 ) -> str:
     """Render inline code spans, autolinked URLs and symbol xrefs.
 
+    Both ````double```` and ```single``` backtick runs become
+    ``<code>`` spans; double-backticks are processed first so a stray
+    backtick inside them is preserved as a literal.
+
     Args:
-        text: HTML-escaped text containing optional ````code```` runs and
+        text: HTML-escaped text containing optional backtick code runs and
             bare ``http(s)://`` URLs.
         resolver: Optional callback that turns a backticked token into an
             href (e.g. ``#api-foo`` or ``../other.html#api-bar``). Tokens
             that resolve are wrapped in ``<a class="api-xref">``.
 
     Returns:
-        The same text with paired double-backtick runs converted to
-        ``<code>`` spans (optionally wrapped in xref links) and plain URLs
-        wrapped in ``<a>`` tags.
+        The rendered HTML string.
     """
 
     parts = text.split("``")
     rendered: list[str] = []
     for index, part in enumerate(parts):
         if index % 2:
-            href = resolver(part) if resolver else None
-            if href:
-                rendered.append(
-                    f'<a class="api-xref" href="{escape(href)}">'
-                    f'<code>{part}</code></a>'
-                )
-            else:
-                rendered.append(f"<code>{part}</code>")
+            rendered.append(_code_span(part, resolver))
         else:
-            rendered.append(_autolink_urls(part))
+            rendered.append(_process_outside(part, resolver))
     return "".join(rendered)
+
+
+_SINGLE_BACKTICK = re.compile(r"`([^`]+)`")
+
+
+def _process_outside(text: str, resolver: Callable[[str], str | None] | None) -> str:
+    """Render single-backtick code spans and autolink URLs in the rest."""
+
+    pieces: list[str] = []
+    cursor = 0
+    for match in _SINGLE_BACKTICK.finditer(text):
+        pieces.append(_autolink_urls(text[cursor:match.start()]))
+        pieces.append(_code_span(match.group(1), resolver))
+        cursor = match.end()
+    pieces.append(_autolink_urls(text[cursor:]))
+    return "".join(pieces)
+
+
+def _code_span(content: str, resolver: Callable[[str], str | None] | None) -> str:
+    """Wrap ``content`` in ``<code>`` (and an xref ``<a>`` when ``resolver`` matches)."""
+
+    href = resolver(content) if resolver else None
+    if href:
+        return f'<a class="api-xref" href="{escape(href)}"><code>{content}</code></a>'
+    return f"<code>{content}</code>"
 
 
 _URL_PATTERN = re.compile(r"https?://\S+")

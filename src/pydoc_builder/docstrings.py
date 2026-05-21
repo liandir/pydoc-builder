@@ -107,7 +107,8 @@ def parse_doc_fields(lines: list[str]) -> list[dict[str, str]]:
                 fields.append(current)
             current = _parse_doc_field(line)
         elif current is not None:
-            current["description"] = f'{current["description"]} {line}'.strip()
+            sep = "\n" if current["description"] else ""
+            current["description"] = f'{current["description"]}{sep}{line}'
         else:
             current = {"name": "", "type": "", "description": line}
     if current is not None:
@@ -161,13 +162,30 @@ def _render_summary(lines: list[str], resolver: Resolver | None = None) -> str:
     return "".join(_render_prose_lines(lines, resolver))
 
 
+_UL_ITEM = re.compile(r"^\s*[-*+]\s+(.+)$")
+_OL_ITEM = re.compile(r"^\s*\d+[.)]\s+(.+)$")
+
+
+def _render_description(text: str, resolver: Resolver | None) -> str:
+    """Render a field description, falling back to prose rendering for lists."""
+
+    lines = text.splitlines()
+    has_list = any(_UL_ITEM.match(line) or _OL_ITEM.match(line) for line in lines)
+    if has_list:
+        return "".join(_render_prose_lines(lines, resolver))
+    flat = " ".join(line.strip() for line in lines).strip()
+    return inline_markup(escape(flat), resolver)
+
+
 def _render_prose_lines(lines: list[str], resolver: Resolver | None = None) -> list[str]:
-    """Render prose lines while preserving indented literal blocks."""
+    """Render prose lines while preserving lists, literal blocks, and math."""
 
     parts: list[str] = []
     paragraph: list[str] = []
     literal: list[str] = []
     math_block: list[str] = []
+    list_items: list[str] = []
+    list_kind: str | None = None
 
     def flush_paragraph() -> None:
         if paragraph:
@@ -190,6 +208,18 @@ def _render_prose_lines(lines: list[str], resolver: Resolver | None = None) -> l
                 parts.append(f'<div class="math-block">{escape(text)}</div>')
             math_block.clear()
 
+    def flush_list() -> None:
+        nonlocal list_kind
+        if list_items:
+            tag = list_kind or "ul"
+            rows = "".join(
+                f"<li>{inline_markup(escape(item), resolver)}</li>"
+                for item in list_items
+            )
+            parts.append(f"<{tag}>{rows}</{tag}>")
+            list_items.clear()
+        list_kind = None
+
     for line in lines:
         stripped = line.strip()
         if math_block:
@@ -200,12 +230,30 @@ def _render_prose_lines(lines: list[str], resolver: Resolver | None = None) -> l
         if not line.strip():
             flush_paragraph()
             flush_literal()
+            flush_list()
             continue
         if stripped in {"\\[", "$$"}:
             flush_paragraph()
             flush_literal()
+            flush_list()
             math_block.append(line)
             continue
+        ul = _UL_ITEM.match(line)
+        ol = _OL_ITEM.match(line)
+        if ul or ol:
+            flush_paragraph()
+            flush_literal()
+            kind = "ul" if ul else "ol"
+            if list_kind is not None and list_kind != kind:
+                flush_list()
+            list_kind = kind
+            list_items.append((ul or ol).group(1).strip())
+            continue
+        if list_items and line.startswith((" ", "\t")):
+            list_items[-1] = f"{list_items[-1]} {stripped}"
+            continue
+        if list_items:
+            flush_list()
         if line.startswith((" ", "\t")):
             flush_paragraph()
             literal.append(line)
@@ -214,6 +262,7 @@ def _render_prose_lines(lines: list[str], resolver: Resolver | None = None) -> l
         paragraph.append(line)
     flush_paragraph()
     flush_literal()
+    flush_list()
     flush_math()
     return parts
 
@@ -339,7 +388,7 @@ def _render_doc_field(
     description = field["description"]
     name_html = f'<span class="doc-field-name">{escape(name)}</span>' if name else ""
     type_html = f'<span class="{type_class}">{escape(type_name)}</span>' if type_name else ""
-    description_html = inline_markup(escape(description), resolver)
+    description_html = _render_description(description, resolver)
     return f"""
       <div class="doc-field">
         <dt>{name_html}{type_html}</dt>
