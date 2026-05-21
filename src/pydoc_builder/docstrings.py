@@ -221,12 +221,14 @@ def _render_prose_lines(lines: list[str], resolver: Resolver | None = None) -> l
 def _render_field_section(title: str, lines: list[str], resolver: Resolver | None = None) -> str:
     """Render a structured docstring field section."""
 
-    fields = _parse_return_fields(lines) if title in {"Returns", "Yields"} else parse_doc_fields(lines)
+    is_return = title in {"Returns", "Yields"}
+    fields = _parse_return_fields(lines) if is_return else parse_doc_fields(lines)
     if title == "Arguments":
         fields = [field for field in fields if not field["name"].startswith("*")]
     if not fields:
         return ""
-    rows = "\n".join(_render_doc_field(field, resolver) for field in fields)
+    type_class = "doc-return-type" if is_return else "doc-field-type"
+    rows = "\n".join(_render_doc_field(field, resolver, type_class) for field in fields)
     return f"""
     <section class="doc-section">
       <h3>{escape(title)}</h3>
@@ -325,14 +327,18 @@ def _parse_doc_field(line: str) -> dict[str, str]:
     return {"name": name, "type": type_name, "description": description.strip()}
 
 
-def _render_doc_field(field: dict[str, str], resolver: Resolver | None = None) -> str:
+def _render_doc_field(
+    field: dict[str, str],
+    resolver: Resolver | None = None,
+    type_class: str = "doc-field-type",
+) -> str:
     """Render one parsed docstring field."""
 
     name = field["name"]
     type_name = field["type"]
     description = field["description"]
     name_html = f'<span class="doc-field-name">{escape(name)}</span>' if name else ""
-    type_html = f'<span class="doc-field-type">{escape(type_name)}</span>' if type_name else ""
+    type_html = f'<span class="{type_class}">{escape(type_name)}</span>' if type_name else ""
     description_html = inline_markup(escape(description), resolver)
     return f"""
       <div class="doc-field">

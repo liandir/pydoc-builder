@@ -339,7 +339,7 @@ _CSS = """
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
       font-weight: 700;
     }
-    .doc-field-type {
+    .doc-field-type, .doc-return-type {
       color: var(--field-type);
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     }
