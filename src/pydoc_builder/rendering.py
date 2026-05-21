@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from .docstrings import doc_block
 from .highlighting import highlight_python
 from .models import ApiObject, ModuleDoc
@@ -13,6 +15,7 @@ def render_object(
     obj: ApiObject,
     module: ModuleDoc,
     class_index: dict[str, tuple[ModuleDoc, ApiObject]],
+    resolver: Callable[[str], str | None] | None = None,
 ) -> str:
     """Render an extracted class or function.
 
@@ -21,21 +24,71 @@ def render_object(
         module: The module ``obj`` belongs to; used to compute cross-links.
         class_index: Lookup of unique class names to ``(module, object)`` used
             to link base classes back to their definitions.
+        resolver: Optional symbol resolver passed through to ``doc_block`` so
+            inline ``code`` spans can become cross-reference links.
 
     Returns:
         The ``<article>`` HTML fragment for ``obj`` and its nested children.
     """
 
-    children = "\n".join(render_object(child, module, class_index) for child in obj.children)
+    children = "\n".join(
+        render_object(child, module, class_index, resolver) for child in obj.children
+    )
     heading = _object_heading(obj, module, class_index)
     return f"""
     <article class="api-object" id="{escape(obj.anchor)}">
       <div class="object-meta">{escape(obj.kind)} · line {obj.lineno}</div>
       {heading_with_source(heading, obj.source, obj.lineno)}
-      {doc_block(obj.docstring)}
+      {doc_block(obj.docstring, resolver)}
       {children}
     </article>
     """
+
+
+def xref_resolver(
+    module: ModuleDoc,
+    modules: list[ModuleDoc],
+) -> Callable[[str], str | None]:
+    """Build a callable that maps backticked tokens to xref hrefs.
+
+    Args:
+        module: The module whose docstrings are being rendered (used to
+            compute relative links to other modules).
+        modules: All parsed modules; consulted for ``module.path:symbol``
+            cross-references.
+
+    Returns:
+        A function that takes one token and returns an href (``"#anchor"``
+        for same-page jumps or a relative ``"path.html#anchor"`` for
+        cross-page jumps), or ``None`` when no API object matches.
+    """
+
+    local: dict[str, str] = {}
+    counts: dict[str, int] = {}
+    for obj in iter_objects(module.objects):
+        local[obj.qualname] = obj.anchor
+        counts[obj.name] = counts.get(obj.name, 0) + 1
+    for obj in iter_objects(module.objects):
+        if counts[obj.name] == 1:
+            local.setdefault(obj.name, obj.anchor)
+
+    by_module = {m.module_name: m for m in modules}
+
+    def resolve(token: str) -> str | None:
+        if ":" in token:
+            mod_name, _, sym = token.partition(":")
+            target_mod = by_module.get(mod_name)
+            if target_mod is None:
+                return None
+            for obj in iter_objects(target_mod.objects):
+                if obj.qualname == sym or obj.name == sym:
+                    rel = rel_link(module.page_path, target_mod.page_path)
+                    return f"{rel}#{obj.anchor}"
+            return None
+        anchor_id = local.get(token)
+        return f"#{anchor_id}" if anchor_id else None
+
+    return resolve
 
 
 def heading_with_source(heading_html: str, source: str, start_lineno: int = 1) -> str:
@@ -98,12 +151,18 @@ def _object_heading(
     module: ModuleDoc,
     class_index: dict[str, tuple[ModuleDoc, ApiObject]],
 ) -> str:
-    """Render an API object heading, including class inheritance."""
+    """Render an API object heading, including class inheritance and variadic args."""
 
-    if obj.kind != "class" or not obj.bases:
+    if obj.kind == "class":
+        if not obj.bases:
+            return f"<h2>{escape(obj.name)}</h2>"
+        bases = ", ".join(_base_link(base, module, class_index) for base in obj.bases)
+        return f'<h2>{escape(obj.name)} <span class="inherits">inherits {bases}</span></h2>'
+    varargs = [param for param in obj.params if param.startswith("*")]
+    if not varargs:
         return f"<h2>{escape(obj.name)}</h2>"
-    bases = ", ".join(_base_link(base, module, class_index) for base in obj.bases)
-    return f'<h2>{escape(obj.name)} <span class="inherits">inherits {bases}</span></h2>'
+    marker = ", ".join(f"<code>{escape(param)}</code>" for param in varargs)
+    return f'<h2>{escape(obj.name)} <span class="varargs">accepts {marker}</span></h2>'
 
 
 def _base_link(

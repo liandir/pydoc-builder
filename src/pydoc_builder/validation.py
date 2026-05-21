@@ -76,6 +76,9 @@ def _module_failures(module: ModuleDoc) -> list[str]:
 def _missing_arg_docs(obj: ApiObject) -> list[str]:
     """Return parameter names that are not documented in ``obj``'s docstring.
 
+    Variadic parameters (``*args`` and ``**kwargs``) are exempt: their meaning
+    is conveyed by the heading marker, not by a per-arg description.
+
     Args:
         obj: API object whose ``Args:`` section is checked.
     """
@@ -83,7 +86,10 @@ def _missing_arg_docs(obj: ApiObject) -> list[str]:
     if not obj.params:
         return []
     documented = _documented_arg_names(obj.docstring)
-    return [param for param in obj.params if param not in documented]
+    return [
+        param for param in obj.params
+        if param not in documented and not param.startswith("*")
+    ]
 
 
 def _missing_returns_doc(obj: ApiObject) -> bool:

@@ -200,7 +200,7 @@ def _render_node(
         )
 
     if not _is_under(expand_to, node):
-        return label_html
+        return _folder_chevron(expanded=False) + label_html
 
     children_html = _render_children(
         config, page_path, modules,
@@ -210,7 +210,8 @@ def _render_node(
         is_module_page=is_module_page,
         mark_current=mark_current,
     )
-    return f"{label_html}{children_html}"
+    chevron = _folder_chevron(expanded=bool(children_html))
+    return f"{chevron}{label_html}{children_html}"
 
 
 def _render_children(
@@ -331,6 +332,21 @@ def _dir_link(config: BuildConfig, page_path: Path, directory: Path) -> str:
     """Render a basename-labelled link to a directory page."""
 
     return (
+        f'{_folder_chevron(expanded=False)}'
         f'<a href="{rel_link(page_path, directory_index_path(config, directory))}">'
         f'{escape(directory.name)}/</a>'
+    )
+
+
+def _folder_chevron(*, expanded: bool) -> str:
+    """Inline VS-Code-style chevron indicating folder expand state."""
+
+    direction = "down" if expanded else "right"
+    path = "M3 5l5 5 5-5" if expanded else "M5 3l5 5-5 5"
+    return (
+        f'<svg class="tree-chevron tree-chevron-{direction}" '
+        f'viewBox="0 0 16 16" aria-hidden="true">'
+        f'<path d="{path}" fill="none" stroke="currentColor" '
+        f'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>'
+        f'</svg>'
     )

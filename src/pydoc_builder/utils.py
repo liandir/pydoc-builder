@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import html
 import os
+import re
+from collections.abc import Callable
 from pathlib import Path
 
 from .config import BuildConfig
@@ -92,28 +94,70 @@ def card(href: str, title: str, detail: str = "") -> str:
     )
 
 
-def inline_code(text: str) -> str:
-    """Render double-backtick inline code spans in already-escaped text.
+def inline_markup(
+    text: str,
+    resolver: Callable[[str], str | None] | None = None,
+) -> str:
+    """Render inline code spans, autolinked URLs and symbol xrefs.
 
     Args:
-        text: HTML-escaped text containing ````code```` runs to wrap in
-            ``<code>`` tags.
+        text: HTML-escaped text containing optional ````code```` runs and
+            bare ``http(s)://`` URLs.
+        resolver: Optional callback that turns a backticked token into an
+            href (e.g. ``#api-foo`` or ``../other.html#api-bar``). Tokens
+            that resolve are wrapped in ``<a class="api-xref">``.
 
     Returns:
         The same text with paired double-backtick runs converted to
-        ``<code>`` spans.
+        ``<code>`` spans (optionally wrapped in xref links) and plain URLs
+        wrapped in ``<a>`` tags.
     """
 
     parts = text.split("``")
-    if len(parts) == 1:
-        return text
     rendered: list[str] = []
     for index, part in enumerate(parts):
         if index % 2:
-            rendered.append(f"<code>{part}</code>")
+            href = resolver(part) if resolver else None
+            if href:
+                rendered.append(
+                    f'<a class="api-xref" href="{escape(href)}">'
+                    f'<code>{part}</code></a>'
+                )
+            else:
+                rendered.append(f"<code>{part}</code>")
         else:
-            rendered.append(part)
+            rendered.append(_autolink_urls(part))
     return "".join(rendered)
+
+
+_URL_PATTERN = re.compile(r"https?://\S+")
+_ENTITY_TAIL = re.compile(r"&(?:[A-Za-z]+|#\d+|#x[0-9A-Fa-f]+)$")
+
+
+def _autolink_urls(text: str) -> str:
+    """Wrap bare ``http(s)://`` URLs in escaped text with anchor tags."""
+
+    def link(match: re.Match[str]) -> str:
+        url = match.group(0)
+        trailing = ""
+        while url and url[-1] in ".,;:!?":
+            trailing = url[-1] + trailing
+            url = url[:-1]
+        while url.endswith(")") and url.count("(") < url.count(")"):
+            trailing = ")" + trailing
+            url = url[:-1]
+        # A stripped ';' may have closed an HTML entity inside the URL.
+        if trailing.startswith(";") and _ENTITY_TAIL.search(url):
+            url += ";"
+            trailing = trailing[1:]
+        if not url:
+            return match.group(0)
+        return (
+            f'<a href="{url}" target="_blank" rel="noopener noreferrer">{url}</a>'
+            f"{trailing}"
+        )
+
+    return _URL_PATTERN.sub(link, text)
 
 
 def directory_index_path(config: BuildConfig, directory: Path) -> Path:

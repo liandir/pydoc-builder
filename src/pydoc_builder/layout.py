@@ -97,6 +97,18 @@ _CSS = """
       font-size: 0.92rem;
       font-weight: 500;
     }
+    .varargs {
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-left: 0.5rem;
+    }
+    .varargs > code {
+      background: none;
+      padding: 0;
+      font-size: inherit;
+      color: inherit;
+    }
     .superclass {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     }
@@ -113,6 +125,9 @@ _CSS = """
       border-radius: 0;
       font-size: inherit;
     }
+    .api-xref { text-decoration: none; }
+    .api-xref > code { color: var(--accent-dark); }
+    .api-xref:hover > code { text-decoration: underline; }
     .eyebrow {
       color: var(--accent-dark);
       font-weight: 700;
@@ -220,6 +235,15 @@ _CSS = """
       color: var(--ink);
       font-weight: 700;
     }
+    .tree-chevron {
+      width: 0.7em;
+      height: 0.7em;
+      vertical-align: -0.05em;
+      margin-right: 0.55em;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .tree-chevron-down { color: var(--accent-dark); }
     .py-icon {
       width: 0.8em;
       height: 0.8em;

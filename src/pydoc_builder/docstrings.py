@@ -3,18 +3,22 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 
-from .utils import escape, inline_code
+from .utils import escape, inline_markup
+
+Resolver = Callable[[str], str | None]
 
 
 _FIELD_HEAD = re.compile(r"^\*{0,2}[A-Za-z_]\w*(\s*\([^)]*\))?\s*:")
 
 
-def doc_block(docstring: str) -> str:
+def doc_block(docstring: str, resolver: Resolver | None = None) -> str:
     """Render a docstring with structured sections when available.
 
     Args:
         docstring: Raw docstring text extracted from a module or API object.
+        resolver: Optional symbol resolver for inline ``code`` cross-references.
 
     Returns:
         HTML fragment for the rendered docstring, or a muted placeholder
@@ -24,8 +28,8 @@ def doc_block(docstring: str) -> str:
     if not docstring:
         return '<p class="muted">No docstring.</p>'
     if _has_structured_sections(docstring):
-        return _structured_doc_block(docstring)
-    return _plain_doc_block(docstring)
+        return _structured_doc_block(docstring, resolver)
+    return _plain_doc_block(docstring, resolver)
 
 
 def split_docstring_sections(docstring: str) -> dict[str, list[str]]:
@@ -111,10 +115,10 @@ def parse_doc_fields(lines: list[str]) -> list[dict[str, str]]:
     return fields
 
 
-def _plain_doc_block(docstring: str) -> str:
+def _plain_doc_block(docstring: str, resolver: Resolver | None = None) -> str:
     """Render a free-form docstring as prose with optional literal blocks."""
 
-    parts = _render_prose_lines(docstring.splitlines())
+    parts = _render_prose_lines(docstring.splitlines(), resolver)
     return f'<div class="docstring plain-docstring">{"".join(parts)}</div>'
 
 
@@ -125,25 +129,25 @@ def _has_structured_sections(docstring: str) -> bool:
     return any(line.strip().lower() in headings | {"example", "examples"} for line in docstring.splitlines())
 
 
-def _structured_doc_block(docstring: str) -> str:
+def _structured_doc_block(docstring: str, resolver: Resolver | None = None) -> str:
     """Render Google-style docstring sections as semantic HTML."""
 
     sections = split_docstring_sections(docstring)
     parts: list[str] = ['<div class="docstring structured-docstring">']
     if sections["summary"]:
-        parts.append(_render_summary(sections["summary"]))
+        parts.append(_render_summary(sections["summary"], resolver))
     if sections["examples"]:
-        parts.append(_render_examples_section(sections["examples"]))
+        parts.append(_render_examples_section(sections["examples"], resolver))
     if sections["args"]:
-        parts.append(_render_field_section("Arguments", sections["args"]))
+        parts.append(_render_field_section("Arguments", sections["args"], resolver))
     if sections["attributes"]:
-        parts.append(_render_field_section("Attributes", sections["attributes"]))
+        parts.append(_render_field_section("Attributes", sections["attributes"], resolver))
     if sections["returns"]:
-        parts.append(_render_field_section("Returns", sections["returns"]))
+        parts.append(_render_field_section("Returns", sections["returns"], resolver))
     if sections["yields"]:
-        parts.append(_render_field_section("Yields", sections["yields"]))
+        parts.append(_render_field_section("Yields", sections["yields"], resolver))
     if sections["raises"]:
-        parts.append(_render_field_section("Raises", sections["raises"]))
+        parts.append(_render_field_section("Raises", sections["raises"], resolver))
     if sections["other"]:
         extra = "\n".join(sections["other"]).strip()
         parts.append(f'<pre class="doc-extra">{escape(extra)}</pre>')
@@ -151,13 +155,13 @@ def _structured_doc_block(docstring: str) -> str:
     return "\n".join(part for part in parts if part)
 
 
-def _render_summary(lines: list[str]) -> str:
+def _render_summary(lines: list[str], resolver: Resolver | None = None) -> str:
     """Render summary lines before the first structured section."""
 
-    return "".join(_render_prose_lines(lines))
+    return "".join(_render_prose_lines(lines, resolver))
 
 
-def _render_prose_lines(lines: list[str]) -> list[str]:
+def _render_prose_lines(lines: list[str], resolver: Resolver | None = None) -> list[str]:
     """Render prose lines while preserving indented literal blocks."""
 
     parts: list[str] = []
@@ -169,7 +173,7 @@ def _render_prose_lines(lines: list[str]) -> list[str]:
         if paragraph:
             text = " ".join(line.strip() for line in paragraph).strip()
             if text:
-                parts.append(f"<p>{inline_code(escape(text))}</p>")
+                parts.append(f"<p>{inline_markup(escape(text), resolver)}</p>")
             paragraph.clear()
 
     def flush_literal() -> None:
@@ -214,13 +218,15 @@ def _render_prose_lines(lines: list[str]) -> list[str]:
     return parts
 
 
-def _render_field_section(title: str, lines: list[str]) -> str:
+def _render_field_section(title: str, lines: list[str], resolver: Resolver | None = None) -> str:
     """Render a structured docstring field section."""
 
     fields = _parse_return_fields(lines) if title in {"Returns", "Yields"} else parse_doc_fields(lines)
+    if title == "Arguments":
+        fields = [field for field in fields if not field["name"].startswith("*")]
     if not fields:
         return ""
-    rows = "\n".join(_render_doc_field(field) for field in fields)
+    rows = "\n".join(_render_doc_field(field, resolver) for field in fields)
     return f"""
     <section class="doc-section">
       <h3>{escape(title)}</h3>
@@ -229,7 +235,7 @@ def _render_field_section(title: str, lines: list[str]) -> str:
     """
 
 
-def _render_examples_section(lines: list[str]) -> str:
+def _render_examples_section(lines: list[str], resolver: Resolver | None = None) -> str:
     """Render example docstring lines with doctest code blocks."""
 
     chunks: list[str] = []
@@ -238,7 +244,7 @@ def _render_examples_section(lines: list[str]) -> str:
 
     def flush_prose() -> None:
         if prose:
-            chunks.append(_render_summary(prose))
+            chunks.append(_render_summary(prose, resolver))
             prose.clear()
 
     def flush_code() -> None:
@@ -319,7 +325,7 @@ def _parse_doc_field(line: str) -> dict[str, str]:
     return {"name": name, "type": type_name, "description": description.strip()}
 
 
-def _render_doc_field(field: dict[str, str]) -> str:
+def _render_doc_field(field: dict[str, str], resolver: Resolver | None = None) -> str:
     """Render one parsed docstring field."""
 
     name = field["name"]
@@ -327,7 +333,7 @@ def _render_doc_field(field: dict[str, str]) -> str:
     description = field["description"]
     name_html = f'<span class="doc-field-name">{escape(name)}</span>' if name else ""
     type_html = f'<span class="doc-field-type">{escape(type_name)}</span>' if type_name else ""
-    description_html = inline_code(escape(description))
+    description_html = inline_markup(escape(description), resolver)
     return f"""
       <div class="doc-field">
         <dt>{name_html}{type_html}</dt>

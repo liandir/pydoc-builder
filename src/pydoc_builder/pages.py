@@ -10,7 +10,7 @@ from .layout import page
 from .markdown import render_markdown
 from .models import ModuleDoc
 from .navigation import sidebar
-from .rendering import class_index, heading_with_source, render_object
+from .rendering import class_index, heading_with_source, render_object, xref_resolver
 from .utils import (
     all_directories,
     card,
@@ -198,14 +198,15 @@ def _write_directory_page(
     eyebrow = f"{directory.as_posix()}/"
     if init_module is not None:
         classes = class_index(modules)
+        resolver = xref_resolver(init_module, modules)
         heading_label = init_module.module_name
         heading_html = heading_with_source(
             f"<h1>{escape(heading_label)}</h1>",
             init_module.full_source,
         )
-        init_docs = doc_block(init_module.docstring)
+        init_docs = doc_block(init_module.docstring, resolver)
         init_objects = "\n".join(
-            render_object(obj, init_module, classes) for obj in init_module.objects
+            render_object(obj, init_module, classes, resolver) for obj in init_module.objects
         )
         toc_objects = init_module.objects
     else:
@@ -245,13 +246,14 @@ def _write_module_page(
     """Write one module API page."""
 
     module.page_path.parent.mkdir(parents=True, exist_ok=True)
-    objects = "\n".join(render_object(obj, module, classes) for obj in module.objects)
+    resolver = xref_resolver(module, modules)
+    objects = "\n".join(render_object(obj, module, classes, resolver) for obj in module.objects)
     body = f"""
     {sidebar(config, module.page_path, modules, current_rel=module.source_rel, is_module_page=True, toc_objects=module.objects)}
     <main class="content">
       <p class="eyebrow">{escape(module.source_rel.as_posix())}</p>
       <h1>{escape(module.module_name)}</h1>
-      {doc_block(module.docstring)}
+      {doc_block(module.docstring, resolver)}
       {objects or '<p class="muted">No public classes or functions found.</p>'}
     </main>
     """
