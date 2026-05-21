@@ -7,7 +7,7 @@ import re
 from .utils import escape, inline_code
 
 
-_FIELD_HEAD = re.compile(r"^[A-Za-z_]\w*(\s*\([^)]*\))?\s*:")
+_FIELD_HEAD = re.compile(r"^\*{0,2}[A-Za-z_]\w*(\s*\([^)]*\))?\s*:")
 
 
 def doc_block(docstring: str) -> str:

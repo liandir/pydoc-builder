@@ -224,7 +224,7 @@ _CSS = """
       width: 0.8em;
       height: 0.8em;
       vertical-align: -0.1em;
-      margin-right: 0.35em;
+      margin-right: 0.55em;
       color: #3776AB;
       flex-shrink: 0;
     }
