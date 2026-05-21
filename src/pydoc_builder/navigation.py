@@ -151,11 +151,11 @@ def _supplemental_section(
         for module in rogue:
             if mark_current and current_rel == module.source_rel:
                 items.append(
-                    f'<li><span class="current-source">{escape(module.source_rel.name)}</span></li>'
+                    f'<li>{_py_icon()}<span class="current-source">{escape(module.source_rel.name)}</span></li>'
                 )
             else:
                 items.append(
-                    f'<li><a href="{rel_link(page_path, module.page_path)}">'
+                    f'<li>{_py_icon()}<a href="{rel_link(page_path, module.page_path)}">'
                     f'{escape(module.source_rel.name)}</a></li>'
                 )
         entries.append(f'<ul class="source-tree">{"".join(items)}</ul>')
@@ -257,11 +257,11 @@ def _render_children(
     for module in child_modules:
         if mark_current and is_module_page and module.source_rel == current_rel:
             items.append(
-                f'<li><span class="current-source">{escape(module.source_rel.name)}</span></li>'
+                f'<li>{_py_icon()}<span class="current-source">{escape(module.source_rel.name)}</span></li>'
             )
         else:
             items.append(
-                f'<li><a href="{rel_link(page_path, module.page_path)}">'
+                f'<li>{_py_icon()}<a href="{rel_link(page_path, module.page_path)}">'
                 f'{escape(module.source_rel.name)}</a></li>'
             )
 
@@ -310,6 +310,26 @@ def _is_under(path: Path, ancestor: Path) -> bool:
     """Return whether ``path`` equals ``ancestor`` or is a descendant of it."""
 
     return path.parts[: len(ancestor.parts)] == ancestor.parts
+
+
+def _py_icon() -> str:
+    """Inline SVG of the Python logo, sized to sit inline before a file name."""
+
+    return (
+        '<svg class="py-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 255" '
+        'aria-hidden="true">'
+        '<defs>'
+        '<linearGradient id="pyA" x1="12.959%" y1="12.039%" x2="79.639%" y2="78.201%">'
+        '<stop offset="0%" stop-color="#387EB8"/><stop offset="100%" stop-color="#366994"/>'
+        '</linearGradient>'
+        '<linearGradient id="pyB" x1="19.128%" y1="20.579%" x2="90.742%" y2="88.429%">'
+        '<stop offset="0%" stop-color="#FFE052"/><stop offset="100%" stop-color="#FFC331"/>'
+        '</linearGradient>'
+        '</defs>'
+        '<path fill="url(#pyA)" d="M126.916.072c-64.832 0-60.784 28.115-60.784 28.115l.072 29.128h61.868v8.745H41.631S.145 61.355.145 126.77c0 65.417 36.21 63.097 36.21 63.097h21.61v-30.358s-1.165-36.21 35.632-36.21h61.362s34.475.557 34.475-33.319V33.97S194.67.072 126.916.072zM92.802 19.66a11.12 11.12 0 0 1 11.13 11.13 11.12 11.12 0 0 1-11.13 11.13 11.12 11.12 0 0 1-11.13-11.13 11.12 11.12 0 0 1 11.13-11.13z"/>'
+        '<path fill="url(#pyB)" d="M128.757 254.126c64.832 0 60.784-28.115 60.784-28.115l-.072-29.127H127.6v-8.745h86.441s41.486 4.705 41.486-60.71c0-65.416-36.21-63.096-36.21-63.096h-21.61v30.358s1.165 36.21-35.632 36.21h-61.362s-34.475-.557-34.475 33.319v56.012s-5.235 33.894 62.518 33.894zm34.114-19.586a11.12 11.12 0 0 1-11.13-11.13 11.12 11.12 0 0 1 11.13-11.131 11.12 11.12 0 0 1 11.13 11.13 11.12 11.12 0 0 1-11.13 11.13z"/>'
+        '</svg>'
+    )
 
 
 def _dir_link(config: BuildConfig, page_path: Path, directory: Path) -> str:

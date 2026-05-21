@@ -193,6 +193,13 @@ _CSS = """
       color: var(--ink);
       font-weight: 700;
     }
+    .py-icon {
+      width: 0.95em;
+      height: 0.95em;
+      vertical-align: -0.15em;
+      margin-right: 0.35em;
+      flex-shrink: 0;
+    }
     .toc-list ul {
       margin: 0.25rem 0 0.55rem 0.8rem;
       padding-left: 0.7rem;
