@@ -10,7 +10,7 @@ from .pages import (
     write_site_index,
 )
 from .parsing import parse_modules
-from .validation import assert_documented_callables
+from .validation import report_docstring_warnings
 
 
 def build(config: BuildConfig) -> int:
@@ -25,7 +25,7 @@ def build(config: BuildConfig) -> int:
 
     modules = parse_modules(config)
     if config.check_arg_docs:
-        assert_documented_callables(config, modules)
+        report_docstring_warnings(config, modules)
     prepare_docs_dir(config)
     write_module_pages(config, modules)
     write_directory_pages(config, modules)

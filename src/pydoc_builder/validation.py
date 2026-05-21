@@ -1,6 +1,8 @@
-"""Check that public callables document their arguments and return values."""
+"""Report docstring-coverage and type-mismatch warnings for public callables."""
 
 from __future__ import annotations
+
+import sys
 
 from .config import BuildConfig
 from .docstrings import parse_doc_fields, split_docstring_sections
@@ -8,69 +10,54 @@ from .models import ApiObject, ModuleDoc
 from .parsing import iter_objects
 
 
-def assert_documented_callables(config: BuildConfig, modules: list[ModuleDoc]) -> None:
-    """Assert every public callable in the main code base documents itself.
+def report_docstring_warnings(config: BuildConfig, modules: list[ModuleDoc]) -> None:
+    """Print docstring-coverage and type-consistency warnings.
 
-    Two coverage rules are enforced:
+    Three checks are run against every public callable in the main code base:
 
-    * every parameter named in the signature appears in the ``Args:`` section;
-    * any callable annotated with a non-``None`` return type has a ``Returns:``
-      or ``Yields:`` section.
+    * every signature parameter appears in the ``Args:`` section;
+    * any callable annotated with a non-``None`` return type has a
+      ``Returns:`` or ``Yields:`` section;
+    * each parameter has at least one type source (signature annotation or
+      a ``(type)`` in the docstring), and the two sources agree when both
+      are present.
 
     Modules outside the main code base (supplemental directories and rogue
-    project-root files) are not held to these rules: if any of their public
-    callables have missing entries, the module is simply reported as skipped
-    rather than aborting the build.
+    project-root files) are skipped quietly.
 
     Args:
         config: Resolved build configuration.
-        modules: Parsed module documentation payloads to validate.
-
-    Underscore-prefixed callables (including dunders) are skipped — they are
-    internal helpers and not held to the same coverage rules.
+        modules: Parsed module documentation payloads to inspect.
     """
+
+    if config.suppress_warnings:
+        return
 
     main_root = config.main_root.resolve()
-    failures: list[str] = []
-    skipped: list[ModuleDoc] = []
+    warnings: list[str] = []
     for module in modules:
-        module_failures = _module_failures(module)
-        if not module_failures:
+        if not module.source_path.resolve().is_relative_to(main_root):
             continue
-        if module.source_path.resolve().is_relative_to(main_root):
-            failures.extend(module_failures)
-        else:
-            skipped.append(module)
+        warnings.extend(_module_warnings(module))
 
-    for module in skipped:
-        print(f"skipped doc check for {module.source_rel} (outside main code base)")
-    if failures:
-        raise AssertionError("Undocumented callable signatures:\n" + "\n".join(failures))
+    for line in warnings:
+        print(f"warning: {line}", file=sys.stderr)
 
 
-def _module_failures(module: ModuleDoc) -> list[str]:
-    """Return doc-coverage failure messages for one module.
+def _module_warnings(module: ModuleDoc) -> list[str]:
+    """Return coverage and type warnings for one module."""
 
-    Args:
-        module: Parsed module to inspect.
-    """
-
-    failures: list[str] = []
+    out: list[str] = []
     for obj in iter_objects(module.objects):
         if obj.name.startswith("_"):
             continue
-        missing_args = _missing_arg_docs(obj)
-        if missing_args:
-            failures.append(
-                f"{module.source_rel}:{obj.lineno} {obj.qualname} missing Args entries: "
-                f"{', '.join(missing_args)}"
-            )
+        location = f"{module.source_rel}:{obj.lineno} {obj.qualname}"
+        for missing in _missing_arg_docs(obj):
+            out.append(f"{location} undocumented argument: {missing}")
         if _missing_returns_doc(obj):
-            failures.append(
-                f"{module.source_rel}:{obj.lineno} {obj.qualname} missing Returns section "
-                f"(annotated -> {obj.returns})"
-            )
-    return failures
+            out.append(f"{location} missing Returns section (annotated -> {obj.returns})")
+        out.extend(f"{location} {detail}" for detail in _type_warnings(obj))
+    return out
 
 
 def _missing_arg_docs(obj: ApiObject) -> list[str]:
@@ -85,7 +72,7 @@ def _missing_arg_docs(obj: ApiObject) -> list[str]:
 
     if not obj.params:
         return []
-    documented = _documented_arg_names(obj.docstring)
+    documented = _documented_arg_fields(obj.docstring)
     return [
         param for param in obj.params
         if param not in documented and not param.startswith("*")
@@ -105,12 +92,37 @@ def _missing_returns_doc(obj: ApiObject) -> bool:
     return not sections["returns"] and not sections["yields"]
 
 
-def _documented_arg_names(docstring: str) -> set[str]:
-    """Return argument names documented in a structured docstring.
+def _type_warnings(obj: ApiObject) -> list[str]:
+    """Return per-arg warnings about missing or disagreeing type information."""
 
-    Args:
-        docstring: Raw docstring text whose ``Args:`` section is parsed.
-    """
+    if not obj.params:
+        return []
+    doc_fields = _documented_arg_fields(obj.docstring)
+    warnings: list[str] = []
+    for param in obj.params:
+        if param.startswith("*"):
+            continue
+        annotated = obj.param_annotations.get(param, "")
+        documented_entry = doc_fields.get(param)
+        if documented_entry is None:
+            continue
+        documented = documented_entry.strip()
+        if not annotated and not documented:
+            warnings.append(f"argument {param!r} has no type (signature or docstring)")
+        elif annotated and documented and annotated.strip() != documented:
+            warnings.append(
+                f"argument {param!r} type mismatch: annotation {annotated!r} "
+                f"vs docstring {documented!r}"
+            )
+    return warnings
+
+
+def _documented_arg_fields(docstring: str) -> dict[str, str]:
+    """Return a ``name -> documented type`` mapping from a structured docstring."""
 
     sections = split_docstring_sections(docstring)
-    return {field["name"] for field in parse_doc_fields(sections["args"]) if field["name"]}
+    return {
+        field["name"]: field["type"]
+        for field in parse_doc_fields(sections["args"])
+        if field["name"]
+    }

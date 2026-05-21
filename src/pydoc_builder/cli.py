@@ -48,13 +48,12 @@ def main(argv: list[str] | None = None) -> int:
         supplemental_roots=supplemental_roots,
         extra_files=tuple(layout.rogue_files),
         check_arg_docs=args.check_args,
+        suppress_warnings=args.suppress_warnings,
+        autofill_types=args.autofill_types,
+        default_theme=args.default_theme,
     )
 
-    try:
-        build(config)
-    except AssertionError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
+    build(config)
     return 0
 
 
@@ -91,7 +90,24 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_false",
         help="Skip the Google-style Args and Returns coverage check for public callables.",
     )
-    parser.set_defaults(check_args=True)
+    parser.add_argument(
+        "--suppress-warnings",
+        action="store_true",
+        help="Silence all docstring-coverage and type-mismatch warnings.",
+    )
+    parser.add_argument(
+        "--no-autocomplete-types",
+        dest="autofill_types",
+        action="store_false",
+        help="Do not backfill missing docstring argument types from signature annotations.",
+    )
+    parser.add_argument(
+        "--default-theme",
+        choices=("light", "dark"),
+        default="light",
+        help="Default page theme when the visitor has no saved preference (default: light).",
+    )
+    parser.set_defaults(check_args=True, autofill_types=True)
     return parser
 
 

@@ -98,7 +98,7 @@ def write_site_index(config: BuildConfig, modules: list[ModuleDoc]) -> None:
       {supp_section}
     </main>
     """
-    site_index.write_text(page(title, body, layout="split"), encoding="utf-8")
+    site_index.write_text(page(title, body, layout="split", default_theme=config.default_theme), encoding="utf-8")
 
 
 def _readme_section(config: BuildConfig) -> str:
@@ -206,7 +206,7 @@ def _write_directory_page(
         )
         init_docs = doc_block(init_module.docstring, resolver)
         init_objects = "\n".join(
-            render_object(obj, init_module, classes, resolver) for obj in init_module.objects
+            render_object(obj, init_module, classes, resolver, config.autofill_types) for obj in init_module.objects
         )
         toc_objects = init_module.objects
     else:
@@ -234,7 +234,7 @@ def _write_directory_page(
     """
     current_path.parent.mkdir(parents=True, exist_ok=True)
     title = init_module.module_name if init_module is not None else f"{directory.as_posix()}/"
-    current_path.write_text(page(title, body, layout="split"), encoding="utf-8")
+    current_path.write_text(page(title, body, layout="split", default_theme=config.default_theme), encoding="utf-8")
 
 
 def _write_module_page(
@@ -247,7 +247,7 @@ def _write_module_page(
 
     module.page_path.parent.mkdir(parents=True, exist_ok=True)
     resolver = xref_resolver(module, modules)
-    objects = "\n".join(render_object(obj, module, classes, resolver) for obj in module.objects)
+    objects = "\n".join(render_object(obj, module, classes, resolver, config.autofill_types) for obj in module.objects)
     body = f"""
     {sidebar(config, module.page_path, modules, current_rel=module.source_rel, is_module_page=True, toc_objects=module.objects)}
     <main class="content">
@@ -257,4 +257,4 @@ def _write_module_page(
       {objects or '<p class="muted">No public classes or functions found.</p>'}
     </main>
     """
-    module.page_path.write_text(page(module.module_name, body, layout="split"), encoding="utf-8")
+    module.page_path.write_text(page(module.module_name, body, layout="split", default_theme=config.default_theme), encoding="utf-8")

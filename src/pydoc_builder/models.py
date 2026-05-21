@@ -21,6 +21,7 @@ class ApiObject:
     source: str
     lineno: int
     children: list["ApiObject"] = field(default_factory=list)
+    param_annotations: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(slots=True)

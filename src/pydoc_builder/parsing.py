@@ -95,6 +95,7 @@ def _parse_object(node: ast.AST, source_text: str, parent: str = "") -> ApiObjec
     assert isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
     children: list[ApiObject] = []
     qualname = f"{parent}.{node.name}" if parent else node.name
+    param_annotations: dict[str, str] = {}
     if isinstance(node, ast.ClassDef):
         kind = "class"
         bases = [ast.unparse(base) for base in [*node.bases, *[kw.value for kw in node.keywords]]]
@@ -109,6 +110,7 @@ def _parse_object(node: ast.AST, source_text: str, parent: str = "") -> ApiObjec
         kind = ("async " if isinstance(node, ast.AsyncFunctionDef) else "") + ("method" if parent else "function")
         bases = []
         params = _documentable_arg_names(node.args)
+        param_annotations = _documentable_arg_annotations(node.args)
         returns = "" if _is_property(node) else (
             ast.unparse(node.returns) if node.returns is not None else ""
         )
@@ -125,6 +127,7 @@ def _parse_object(node: ast.AST, source_text: str, parent: str = "") -> ApiObjec
         source=ast.get_source_segment(source_text, node) or "",
         lineno=node.lineno,
         children=children,
+        param_annotations=param_annotations,
     )
 
 
@@ -157,3 +160,19 @@ def _documentable_arg_names(args: ast.arguments) -> list[str]:
     if args.kwarg is not None:
         names.append(f"**{args.kwarg.arg}")
     return names
+
+
+def _documentable_arg_annotations(args: ast.arguments) -> dict[str, str]:
+    """Return a ``name -> annotation source`` mapping for documentable params.
+
+    Variadic ``*args`` / ``**kwargs`` are excluded — they're surfaced via the
+    heading marker rather than a per-arg type. Parameters without an
+    annotation are omitted from the result.
+    """
+
+    annotations: dict[str, str] = {}
+    for arg in [*args.posonlyargs, *args.args, *args.kwonlyargs]:
+        if arg.arg in {"self", "cls"} or arg.annotation is None:
+            continue
+        annotations[arg.arg] = ast.unparse(arg.annotation)
+    return annotations

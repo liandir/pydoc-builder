@@ -16,6 +16,7 @@ def render_object(
     module: ModuleDoc,
     class_index: dict[str, tuple[ModuleDoc, ApiObject]],
     resolver: Callable[[str], str | None] | None = None,
+    autofill_types: bool = True,
 ) -> str:
     """Render an extracted class or function.
 
@@ -26,20 +27,25 @@ def render_object(
             to link base classes back to their definitions.
         resolver: Optional symbol resolver passed through to ``doc_block`` so
             inline ``code`` spans can become cross-reference links.
+        autofill_types: When true, the ``Args:`` section is filled in with
+            type annotations from the signature for arguments whose docstring
+            entry omitted the ``(type)`` part.
 
     Returns:
         The ``<article>`` HTML fragment for ``obj`` and its nested children.
     """
 
     children = "\n".join(
-        render_object(child, module, class_index, resolver) for child in obj.children
+        render_object(child, module, class_index, resolver, autofill_types)
+        for child in obj.children
     )
     heading = _object_heading(obj, module, class_index)
+    annotations = obj.param_annotations if autofill_types else None
     return f"""
     <article class="api-object" id="{escape(obj.anchor)}">
       <div class="object-meta">{escape(obj.kind)} · line {obj.lineno}</div>
       {heading_with_source(heading, obj.source, obj.lineno)}
-      {doc_block(obj.docstring, resolver)}
+      {doc_block(obj.docstring, resolver, annotations)}
       {children}
     </article>
     """

@@ -12,12 +12,17 @@ _CSS = """
       --muted: #687076;
       --line: #dfe3e6;
       --panel: #f7f9fa;
-      --accent: #0f766e;
-      --accent-dark: #115e59;
+      --accent: #0451a5;
+      --accent-dark: #001080;
       --code: #263238;
       --field-name: #795e26;
       --field-type: #267f99;
       --bg: #ffffff;
+      --surface: #ffffff;
+      --hover-bg: #eef2f4;
+      --source-bg: #fafafa;
+      --gutter-bg: #f3f3f3;
+      --gutter-fg: #b0b3b8;
       --heading-large: clamp(1.6rem, 3vw, 2.4rem);
     }
     * { box-sizing: border-box; }
@@ -146,7 +151,7 @@ _CSS = """
     .module-list li {
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: #fff;
+      background: var(--surface);
       overflow-wrap: anywhere;
       transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
     }
@@ -202,10 +207,11 @@ _CSS = """
     }
     .side ul { list-style: none; padding: 0; margin: 0; }
     .side li { margin: 0.35rem 0; overflow-wrap: anywhere; }
+    .side a { color: var(--ink); }
     .back {
       display: block;
       font-weight: 700;
-      color: var(--accent-dark);
+      color: var(--field-name);
     }
     .side-section {
       border-bottom: 1px solid var(--line);
@@ -319,7 +325,7 @@ _CSS = """
     .doc-field {
       display: grid;
       grid-template-columns: minmax(140px, 260px) minmax(0, 1fr);
-      gap: 0.85rem;
+      gap: 0.4rem;
       border-top: 1px solid var(--line);
       padding-top: 0.55rem;
     }
@@ -338,7 +344,7 @@ _CSS = """
     .doc-field dd > :last-child  { margin-bottom: 0; }
     .doc-field dd ul, .doc-field dd ol { margin: 0.3rem 0; padding-left: 1.4rem; }
     .doc-field-name {
-      color: var(--field-name);
+      color: var(--ink);
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
       font-weight: 700;
     }
@@ -366,7 +372,7 @@ _CSS = """
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 0.9rem;
-      background: #ffffff;
+      background: var(--surface);
       margin: 0.7rem 0 0.9rem;
     }
     .math-block {
@@ -379,14 +385,14 @@ _CSS = """
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 0.9rem;
-      background: #ffffff;
+      background: var(--surface);
       margin: 0.6rem 0 0;
     }
     .source-block {
       margin: 0.3rem 0 0.6rem;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: #ffffff;
+      background: var(--surface);
       overflow: hidden;
     }
     .source-block > summary {
@@ -400,7 +406,7 @@ _CSS = """
       background: var(--panel);
     }
     .source-block > summary::-webkit-details-marker { display: none; }
-    .source-block > summary:hover { background: #eef2f4; }
+    .source-block > summary:hover { background: var(--hover-bg); }
     .summary-heading {
       flex: 1 1 auto;
       min-width: 0;
@@ -435,11 +441,11 @@ _CSS = """
     .source-pane {
       display: flex;
       align-items: stretch;
-      background: #fafafa;
+      background: var(--source-bg);
       border-top: 1px solid var(--line);
       font-size: 0.88rem;
       line-height: 1.55;
-      color: #000000;
+      color: var(--ink);
       overflow: hidden;
     }
     .source-pane > pre {
@@ -450,10 +456,10 @@ _CSS = """
     }
     .source-gutter {
       padding: 1rem 0.7rem 1rem 1rem;
-      color: #b0b3b8;
+      color: var(--gutter-fg);
       text-align: right;
       user-select: none;
-      background: #f3f3f3;
+      background: var(--gutter-bg);
       border-right: 1px solid var(--line);
       white-space: pre;
     }
@@ -487,6 +493,11 @@ _CSS = """
       --accent-dark: #9CDCFE;
       --field-name: #DCDCAA;
       --field-type: #4EC9B0;
+      --surface: #252526;
+      --hover-bg: #2d2d2d;
+      --source-bg: #1e1e1e;
+      --gutter-bg: #252526;
+      --gutter-fg: #6e7681;
     }
     :root[data-theme="dark"] code { background: #2d2d2d; }
     :root[data-theme="dark"] .doc-field-type::before,
@@ -553,24 +564,23 @@ _MATHJAX_HEAD = r"""  <script>
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>"""
 
 
-_THEME_BOOT = r"""  <script>
-    (function(){
-      try {
+_THEME_BOOT_TEMPLATE = """  <script>
+    (function(){{
+      try {{
         var saved = localStorage.getItem('theme');
-        var dark = saved ? saved === 'dark'
-          : window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (dark) document.documentElement.dataset.theme = 'dark';
-      } catch (e) {}
-      window.__toggleTheme = function(){
+        var theme = saved || '{default_theme}';
+        if (theme === 'dark') document.documentElement.dataset.theme = 'dark';
+      }} catch (e) {{}}
+      window.__toggleTheme = function(){{
         var html = document.documentElement;
         var next = html.dataset.theme === 'dark' ? 'light' : 'dark';
         if (next === 'dark') html.dataset.theme = 'dark';
         else delete html.dataset.theme;
-        try { localStorage.setItem('theme', next); } catch (e) {}
+        try {{ localStorage.setItem('theme', next); }} catch (e) {{}}
         var btn = document.querySelector('.theme-toggle');
         if (btn) btn.setAttribute('aria-pressed', String(next === 'dark'));
-      };
-    })();
+      }};
+    }})();
   </script>"""
 
 
@@ -592,7 +602,7 @@ _THEME_TOGGLE = (
 )
 
 
-def page(title: str, body: str, *, layout: str = "split") -> str:
+def page(title: str, body: str, *, layout: str = "split", default_theme: str = "light") -> str:
     """Wrap page content in shared HTML, CSS, and metadata.
 
     Args:
@@ -600,11 +610,14 @@ def page(title: str, body: str, *, layout: str = "split") -> str:
         body: Pre-rendered HTML inserted inside ``<body>``.
         layout: Body class controlling the page's top-level layout
             (``"split"`` or ``"single"``).
+        default_theme: Theme used when the visitor has no saved preference
+            (``"light"`` or ``"dark"``).
 
     Returns:
         A complete HTML document as a string, ready to be written to disk.
     """
 
+    theme = default_theme if default_theme in {"light", "dark"} else "light"
     return (
         "<!doctype html>\n"
         '<html lang="en">\n'
@@ -612,7 +625,7 @@ def page(title: str, body: str, *, layout: str = "split") -> str:
         '  <meta charset="utf-8">\n'
         '  <meta name="viewport" content="width=device-width, initial-scale=1">\n'
         f"  <title>{escape(title)}</title>\n"
-        f"{_THEME_BOOT}\n"
+        f"{_THEME_BOOT_TEMPLATE.format(default_theme=theme)}\n"
         f"{_MATHJAX_HEAD}\n"
         f"  <style>{_CSS}  </style>\n"
         "</head>\n"

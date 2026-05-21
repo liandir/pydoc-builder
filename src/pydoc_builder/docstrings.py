@@ -13,12 +13,18 @@ Resolver = Callable[[str], str | None]
 _FIELD_HEAD = re.compile(r"^\*{0,2}[A-Za-z_]\w*(\s*\([^)]*\))?\s*:")
 
 
-def doc_block(docstring: str, resolver: Resolver | None = None) -> str:
+def doc_block(
+    docstring: str,
+    resolver: Resolver | None = None,
+    param_annotations: dict[str, str] | None = None,
+) -> str:
     """Render a docstring with structured sections when available.
 
     Args:
         docstring: Raw docstring text extracted from a module or API object.
         resolver: Optional symbol resolver for inline ``code`` cross-references.
+        param_annotations: Optional ``name -> annotation`` map used to backfill
+            argument types that the docstring author omitted.
 
     Returns:
         HTML fragment for the rendered docstring, or a muted placeholder
@@ -28,7 +34,7 @@ def doc_block(docstring: str, resolver: Resolver | None = None) -> str:
     if not docstring:
         return '<p class="muted">No docstring.</p>'
     if _has_structured_sections(docstring):
-        return _structured_doc_block(docstring, resolver)
+        return _structured_doc_block(docstring, resolver, param_annotations)
     return _plain_doc_block(docstring, resolver)
 
 
@@ -130,7 +136,11 @@ def _has_structured_sections(docstring: str) -> bool:
     return any(line.strip().lower() in headings | {"example", "examples"} for line in docstring.splitlines())
 
 
-def _structured_doc_block(docstring: str, resolver: Resolver | None = None) -> str:
+def _structured_doc_block(
+    docstring: str,
+    resolver: Resolver | None = None,
+    param_annotations: dict[str, str] | None = None,
+) -> str:
     """Render Google-style docstring sections as semantic HTML."""
 
     sections = split_docstring_sections(docstring)
@@ -140,7 +150,7 @@ def _structured_doc_block(docstring: str, resolver: Resolver | None = None) -> s
     if sections["examples"]:
         parts.append(_render_examples_section(sections["examples"], resolver))
     if sections["args"]:
-        parts.append(_render_field_section("Arguments", sections["args"], resolver))
+        parts.append(_render_field_section("Arguments", sections["args"], resolver, param_annotations))
     if sections["attributes"]:
         parts.append(_render_field_section("Attributes", sections["attributes"], resolver))
     if sections["returns"]:
@@ -267,13 +277,22 @@ def _render_prose_lines(lines: list[str], resolver: Resolver | None = None) -> l
     return parts
 
 
-def _render_field_section(title: str, lines: list[str], resolver: Resolver | None = None) -> str:
+def _render_field_section(
+    title: str,
+    lines: list[str],
+    resolver: Resolver | None = None,
+    param_annotations: dict[str, str] | None = None,
+) -> str:
     """Render a structured docstring field section."""
 
     is_return = title in {"Returns", "Yields"}
     fields = _parse_return_fields(lines) if is_return else parse_doc_fields(lines)
     if title == "Arguments":
         fields = [field for field in fields if not field["name"].startswith("*")]
+        if param_annotations:
+            for field in fields:
+                if not field["type"] and field["name"] in param_annotations:
+                    field["type"] = param_annotations[field["name"]]
     if not fields:
         return ""
     type_class = "doc-return-type" if is_return else "doc-field-type"
