@@ -11,13 +11,14 @@ from .utils import escape, inline_markup
 Resolver = Callable[[str], str | None]
 
 
-_FIELD_HEAD = re.compile(r"^\*{0,2}[A-Za-z_]\w*(\s*\([^)]*\))?\s*:")
+_FIELD_HEAD = re.compile(r"^\*{0,2}[A-Za-z_]\w*(\.\w+)*(\s*\([^)]*\))?\s*:")
 
 
 def doc_block(
     docstring: str,
     resolver: Resolver | None = None,
     param_annotations: dict[str, str] | None = None,
+    return_annotation: str = "",
 ) -> str:
     """Render a docstring with structured sections when available.
 
@@ -26,6 +27,9 @@ def doc_block(
         resolver: Optional symbol resolver for inline ``code`` cross-references.
         param_annotations: Optional ``name -> annotation`` map used to backfill
             argument types that the docstring author omitted.
+        return_annotation: Optional return-type annotation from the signature,
+            used to backfill the Returns section when the docstring lists a
+            return value but omits its type.
 
     Returns:
         HTML fragment for the rendered docstring, or a muted placeholder
@@ -35,7 +39,7 @@ def doc_block(
     if not docstring:
         return '<p class="muted">No docstring.</p>'
     if _has_structured_sections(docstring):
-        return _structured_doc_block(docstring, resolver, param_annotations)
+        return _structured_doc_block(docstring, resolver, param_annotations, return_annotation)
     return _plain_doc_block(docstring, resolver)
 
 
@@ -141,6 +145,7 @@ def _structured_doc_block(
     docstring: str,
     resolver: Resolver | None = None,
     param_annotations: dict[str, str] | None = None,
+    return_annotation: str = "",
 ) -> str:
     """Render Google-style docstring sections as semantic HTML."""
 
@@ -155,7 +160,7 @@ def _structured_doc_block(
     if sections["attributes"]:
         parts.append(_render_field_section("Attributes", sections["attributes"], resolver))
     if sections["returns"]:
-        parts.append(_render_field_section("Returns", sections["returns"], resolver))
+        parts.append(_render_field_section("Returns", sections["returns"], resolver, return_annotation=return_annotation))
     if sections["yields"]:
         parts.append(_render_field_section("Yields", sections["yields"], resolver))
     if sections["raises"]:
@@ -283,6 +288,7 @@ def _render_field_section(
     lines: list[str],
     resolver: Resolver | None = None,
     param_annotations: dict[str, str] | None = None,
+    return_annotation: str = "",
 ) -> str:
     """Render a structured docstring field section."""
 
@@ -294,6 +300,11 @@ def _render_field_section(
             for field in fields:
                 if not field["type"] and field["name"] in param_annotations:
                     field["type"] = param_annotations[field["name"]]
+    if title == "Returns" and return_annotation:
+        if not fields:
+            fields = [{"name": "", "type": return_annotation, "description": ""}]
+        elif not fields[0]["type"]:
+            fields[0]["type"] = return_annotation
     if not fields:
         return ""
     type_class = "doc-return-type" if is_return else "doc-field-type"
@@ -383,15 +394,18 @@ def _parse_doc_field(line: str) -> dict[str, str]:
     head, _, description = line.partition(":")
     head = head.strip()
     type_name = ""
-    name = head
+    name = ""
     if head.endswith(")") and "(" in head:
-        name, _, type_part = head.rpartition("(")
-        name = name.strip()
+        name_part, _, type_part = head.rpartition("(")
+        name = name_part.strip()
         type_name = type_part[:-1].strip()
+    elif "." in head and " " not in head:
+        # A dotted head (``torch.nn.Module``) is never a valid parameter name,
+        # so treat it as a bare type — relevant for ``Returns:`` blocks.
+        type_name = head
     elif " " not in head and head:
         name = head
     else:
-        name = ""
         type_name = head
     return {"name": name, "type": type_name, "description": description.strip()}
 

@@ -41,11 +41,12 @@ def render_object(
     )
     heading = _object_heading(obj, module, class_index)
     annotations = obj.param_annotations if autofill_types else None
+    return_annotation = obj.returns if autofill_types and obj.returns and obj.returns != "None" else ""
     return f"""
     <article class="api-object" id="{escape(obj.anchor)}">
       <div class="object-meta">{escape(obj.kind)} · line {obj.lineno}</div>
       {heading_with_source(heading, obj.source, obj.lineno)}
-      {doc_block(obj.docstring, resolver, annotations)}
+      {doc_block(obj.docstring, resolver, annotations, return_annotation)}
       {children}
     </article>
     """
