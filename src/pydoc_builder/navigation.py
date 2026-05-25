@@ -46,7 +46,7 @@ def sidebar(
 
     home_path = config.docs_dir / "index.html"
     project_home = (
-        f'<a class="back" href="{rel_link(page_path, home_path)}">Project Home</a>'
+        f'<a class="back" href="{rel_link(page_path, home_path)}">Project Documentation Home</a>'
     )
     main_dir = main_package_dir(config)
     main_tree = _section_tree(

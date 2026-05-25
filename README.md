@@ -1,4 +1,4 @@
-# pydoc-builder
+# Pyproject Documentation Builder
 
 Static HTML documentation builder for Python projects. Parses sources with
 `ast` and writes a self-contained docs site — no project imports, no runtime
@@ -73,9 +73,31 @@ grouped into a doctest-style code block; intervening prose renders as
 paragraphs. Other indented blocks anywhere in the docstring are preserved
 verbatim as literal code.
 
-By default, every public callable (name not starting with `_`) must document
-each of its parameters in an `Args:` section, or the build fails with an
-`AssertionError`. Disable with `--no-check-args`.
+By default, every public callable (name not starting with `_`) is checked
+against three rules; failures are emitted as warnings to stderr but never
+abort the build:
+
+1. every signature parameter appears in the `Args:` section;
+2. any callable annotated with a non-`None` return type has a `Returns:` or
+   `Yields:` section;
+3. each documented parameter has at least one type source (signature or
+   docstring) and the two agree when both are present.
+
+Disable all three checks with `--no-check-args`, or silence the output with
+`--suppress-warnings`.
+
+### Type backfill
+
+When a docstring entry omits the `(type)` part, the missing type is filled
+in from the signature annotation:
+
+- `Args:` entries pick up the matching parameter annotation.
+- `Returns:` picks up the function's return annotation (skipped when the
+  annotation is `None`).
+
+This means a fully-annotated signature with a description-only `Returns:`
+block still renders a typed Returns table. Disable with
+`--no-autocomplete-types`.
 
 ### MathJax
 
@@ -156,11 +178,17 @@ No separate `__init__.html` is written — the package directory's
 ### Options
 
 ```
---project-root PATH    Project root to scan (default: cwd)
---docs-dir PATH        Output directory (default: <project-root>/docs)
---package NAME         Main code-base directory name when multiple candidates
-                       exist (skips the interactive prompt)
---no-check-args        Skip the Google-style Args coverage check
+--project-root PATH        Project root to scan (default: cwd)
+--docs-dir PATH            Output directory (default: <project-root>/docs)
+--package NAME             Main code-base directory name when multiple
+                           candidates exist (skips the interactive prompt)
+--no-check-args            Skip the Args, Returns, and type-mismatch checks
+--suppress-warnings        Silence all docstring-coverage and type warnings
+--no-autocomplete-types    Do not backfill missing docstring types from
+                           signature annotations
+--default-theme {light,dark}
+                           Default page theme when the visitor has no saved
+                           preference (default: light)
 ```
 
 ### Example

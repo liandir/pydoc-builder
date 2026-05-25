@@ -85,7 +85,12 @@ def write_site_index(config: BuildConfig, modules: list[ModuleDoc]) -> None:
 
     title = config.project_root.name
     readme_section = _readme_section(config)
-    hero = "" if readme_section else f'<div class="home-hero"><h1>{escape(title)}</h1></div>'
+    hero = f"""
+    <div class="home-hero">
+      <h1>Project Documentation</h1>
+      <p class="home-built-with">built with <a href="https://github.com/liandir/pydoc-builder" target="_blank" rel="noopener noreferrer">pydoc-builder</a></p>
+    </div>
+    """
     body = f"""
     {sidebar(config, site_index, modules, current_rel=main_dir, is_module_page=False, mark_current=False)}
     <main class="content">
@@ -107,7 +112,12 @@ def _readme_section(config: BuildConfig) -> str:
     for name in ("README.md", "readme.md", "Readme.md"):
         path = config.project_root / name
         if path.is_file():
-            return f'<section class="readme">{render_markdown(path.read_text(encoding="utf-8"))}</section>'
+            return (
+                f'<section class="readme">'
+                f'<p class="readme-eyebrow">Project README</p>'
+                f'{render_markdown(path.read_text(encoding="utf-8"))}'
+                f'</section>'
+            )
     return ""
 
 

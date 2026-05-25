@@ -37,13 +37,23 @@ _CSS = """
     h1, h2, h3 { line-height: 1.18; margin: 0 0 0.7rem; }
     h1 { font-size: var(--heading-large); max-width: 980px; }
     h2 { font-size: 1.35rem; margin-top: 2rem; }
-    .home-hero { margin: 0 0 1.4rem; }
-    .home-hero h1,
-    .readme > h1:first-child {
+    .home-hero {
+      margin: 0 0 1.4rem;
+      padding: 9rem 1.5rem;
+      background: linear-gradient(to bottom, rgba(4, 81, 165, 0.12), rgba(4, 81, 165, 0));
+      border-radius: 6px;
+    }
+    .home-hero h1 {
+      font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+      margin: 0 0 0.4rem;
+      max-width: none;
+    }
+    .readme > h1:first-of-type {
       font-size: var(--heading-large);
       margin: 0 0 0.9rem;
       max-width: none;
     }
+    .home-built-with { margin: 0; font-size: 0.85rem; color: var(--muted); }
     .readme {
       margin: 0 0 1.75rem;
       padding: 0;
@@ -167,6 +177,13 @@ _CSS = """
       letter-spacing: 0;
       text-transform: uppercase;
       font-size: 0.78rem;
+    }
+    .readme-eyebrow {
+      margin: 0 0 0.6rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
     section { padding: 0; }
     .module-list {
