@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 
+from .highlighting import highlight_python
 from .utils import escape, inline_markup
 
 Resolver = Callable[[str], str | None]
@@ -406,7 +407,7 @@ def _render_doc_field(
     type_name = field["type"]
     description = field["description"]
     name_html = f'<span class="doc-field-name">{escape(name)}</span>' if name else ""
-    type_html = f'<span class="{type_class}">{escape(type_name)}</span>' if type_name else ""
+    type_html = f'<span class="{type_class}">{highlight_python(type_name)}</span>' if type_name else ""
     description_html = _render_description(description, resolver)
     return f"""
       <div class="doc-field">

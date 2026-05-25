@@ -13,7 +13,7 @@ _CSS = """
       --line: #dfe3e6;
       --panel: #f7f9fa;
       --accent: #0451a5;
-      --accent-dark: #001080;
+      --accent-dark: #003d8b;
       --code: #263238;
       --field-name: #795e26;
       --field-type: #267f99;
@@ -69,6 +69,34 @@ _CSS = """
       margin: 0.85rem 0;
     }
     .readme pre code { background: none; padding: 0; font-size: 0.92em; }
+    .readme .code-block { position: relative; margin: 0.85rem 0; }
+    .readme .code-block > pre { margin: 0; }
+    .copy-btn {
+      position: absolute;
+      top: 0.4rem;
+      right: 0.4rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.85rem;
+      height: 1.85rem;
+      padding: 0;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+    .copy-btn svg { width: 0.95rem; height: 0.95rem; display: block; }
+    .copy-btn .check-icon { display: none; }
+    .copy-btn.copied .copy-icon { display: none; }
+    .copy-btn.copied .check-icon { display: block; }
+    .code-block:hover .copy-btn,
+    .copy-btn:focus-visible { opacity: 1; }
+    .copy-btn:hover { color: var(--accent-dark); border-color: var(--accent); }
+    .copy-btn.copied { color: var(--accent-dark); border-color: var(--accent); opacity: 1; }
     .readme blockquote {
       border-left: 3px solid var(--accent);
       padding: 0.1rem 0 0.1rem 0.9rem;
@@ -490,7 +518,7 @@ _CSS = """
       --line: #2b2b2b;
       --panel: #181818;
       --accent: #4FC1FF;
-      --accent-dark: #9CDCFE;
+      --accent-dark: #569CD6;
       --field-name: #DCDCAA;
       --field-type: #4EC9B0;
       --surface: #252526;
@@ -500,6 +528,9 @@ _CSS = """
       --gutter-fg: #6e7681;
     }
     :root[data-theme="dark"] code { background: #2d2d2d; }
+    :root[data-theme="dark"] pre code,
+    :root[data-theme="dark"] .source-code code,
+    :root[data-theme="dark"] .example-code code { background: none; }
     :root[data-theme="dark"] .doc-field-type::before,
     :root[data-theme="dark"] .doc-field-type::after { color: #9CA3AF; }
     :root[data-theme="dark"] .tok-keyword      { color: #569CD6; }
@@ -571,6 +602,26 @@ _THEME_BOOT_TEMPLATE = """  <script>
         var theme = saved || '{default_theme}';
         if (theme === 'dark') document.documentElement.dataset.theme = 'dark';
       }} catch (e) {{}}
+      window.__copyCode = function(btn){{
+        var pre = btn.parentElement && btn.parentElement.querySelector('pre');
+        if (!pre) return;
+        var text = pre.innerText;
+        var done = function(){{
+          btn.classList.add('copied');
+          setTimeout(function(){{ btn.classList.remove('copied'); }}, 1200);
+        }};
+        if (navigator.clipboard && navigator.clipboard.writeText) {{
+          navigator.clipboard.writeText(text).then(done, function(){{}});
+        }} else {{
+          var ta = document.createElement('textarea');
+          ta.value = text; ta.setAttribute('readonly', '');
+          ta.style.position = 'absolute'; ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.select();
+          try {{ document.execCommand('copy'); done(); }} catch (e) {{}}
+          document.body.removeChild(ta);
+        }}
+      }};
       window.__toggleTheme = function(){{
         var html = document.documentElement;
         var next = html.dataset.theme === 'dark' ? 'light' : 'dark';

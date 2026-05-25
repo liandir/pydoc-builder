@@ -219,7 +219,25 @@ def _render_block(block: tuple) -> str:
     if kind == "code":
         lang, code = block[1], block[2]
         cls = f' class="language-{html.escape(lang)}"' if lang else ""
-        return f"<pre><code{cls}>{html.escape(code)}</code></pre>"
+        icon = (
+            '<svg class="copy-icon" viewBox="0 0 16 16" aria-hidden="true">'
+            '<rect x="4.5" y="4.5" width="8" height="9" rx="1.25" fill="none" '
+            'stroke="currentColor" stroke-width="1.3"/>'
+            '<path d="M3.5 11V3.25A1.25 1.25 0 0 1 4.75 2H10" fill="none" '
+            'stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>'
+            "</svg>"
+            '<svg class="check-icon" viewBox="0 0 16 16" aria-hidden="true">'
+            '<path d="M3.5 8.5l3 3 6-6.5" fill="none" stroke="currentColor" '
+            'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+            "</svg>"
+        )
+        return (
+            '<div class="code-block">'
+            '<button type="button" class="copy-btn" aria-label="Copy code" '
+            f'onclick="__copyCode(this)">{icon}</button>'
+            f"<pre><code{cls}>{html.escape(code)}</code></pre>"
+            "</div>"
+        )
     if kind == "hr":
         return "<hr>"
     if kind == "blockquote":
