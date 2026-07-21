@@ -6,7 +6,8 @@ import re
 from collections.abc import Callable
 
 from .highlighting import highlight_python
-from .utils import escape, inline_markup
+from .markdown import render_markdown
+from .utils import escape
 
 Resolver = Callable[[str], str | None]
 
@@ -183,32 +184,27 @@ _OL_ITEM = re.compile(r"^\s*\d+[.)]\s+(.+)$")
 
 
 def _render_description(text: str, resolver: Resolver | None) -> str:
-    """Render a field description, falling back to prose rendering for lists."""
+    """Render Markdown in a structured field description."""
 
-    lines = text.splitlines()
-    has_list = any(_UL_ITEM.match(line) or _OL_ITEM.match(line) for line in lines)
-    if has_list:
-        return "".join(_render_prose_lines(lines, resolver))
-    flat = " ".join(line.strip() for line in lines).strip()
-    return inline_markup(escape(flat), resolver)
+    return render_markdown(text, resolver)
 
 
 def _render_prose_lines(lines: list[str], resolver: Resolver | None = None) -> list[str]:
-    """Render prose lines while preserving lists, literal blocks, and math."""
+    """Render Markdown prose while preserving literal and display-math blocks."""
 
     parts: list[str] = []
-    paragraph: list[str] = []
+    markdown_lines: list[str] = []
     literal: list[str] = []
     math_block: list[str] = []
-    list_items: list[str] = []
-    list_kind: str | None = None
+    in_fence = False
+    list_active = False
 
-    def flush_paragraph() -> None:
-        if paragraph:
-            text = " ".join(line.strip() for line in paragraph).strip()
-            if text:
-                parts.append(f"<p>{inline_markup(escape(text), resolver)}</p>")
-            paragraph.clear()
+    def flush_markdown() -> None:
+        if markdown_lines:
+            text = "\n".join(markdown_lines).strip("\n")
+            if text.strip():
+                parts.append(render_markdown(text, resolver))
+            markdown_lines.clear()
 
     def flush_literal() -> None:
         if literal:
@@ -224,18 +220,6 @@ def _render_prose_lines(lines: list[str], resolver: Resolver | None = None) -> l
                 parts.append(f'<div class="math-block">{escape(text)}</div>')
             math_block.clear()
 
-    def flush_list() -> None:
-        nonlocal list_kind
-        if list_items:
-            tag = list_kind or "ul"
-            rows = "".join(
-                f"<li>{inline_markup(escape(item), resolver)}</li>"
-                for item in list_items
-            )
-            parts.append(f"<{tag}>{rows}</{tag}>")
-            list_items.clear()
-        list_kind = None
-
     for line in lines:
         stripped = line.strip()
         if math_block:
@@ -243,42 +227,46 @@ def _render_prose_lines(lines: list[str], resolver: Resolver | None = None) -> l
             if stripped in {"\\]", "$$"}:
                 flush_math()
             continue
+        if in_fence:
+            markdown_lines.append(line)
+            if line.startswith("```"):
+                in_fence = False
+            continue
         if not line.strip():
-            flush_paragraph()
             flush_literal()
-            flush_list()
+            markdown_lines.append("")
+            list_active = False
             continue
         if stripped in {"\\[", "$$"}:
-            flush_paragraph()
+            flush_markdown()
             flush_literal()
-            flush_list()
             math_block.append(line)
+            continue
+        if line.startswith("```"):
+            flush_literal()
+            markdown_lines.append(line)
+            in_fence = True
+            list_active = False
             continue
         ul = _UL_ITEM.match(line)
         ol = _OL_ITEM.match(line)
         if ul or ol:
-            flush_paragraph()
             flush_literal()
-            kind = "ul" if ul else "ol"
-            if list_kind is not None and list_kind != kind:
-                flush_list()
-            list_kind = kind
-            list_items.append((ul or ol).group(1).strip())
+            markdown_lines.append(line)
+            list_active = True
             continue
-        if list_items and line.startswith((" ", "\t")):
-            list_items[-1] = f"{list_items[-1]} {stripped}"
+        if list_active and line.startswith((" ", "\t")):
+            markdown_lines.append(line)
             continue
-        if list_items:
-            flush_list()
         if line.startswith((" ", "\t")):
-            flush_paragraph()
+            flush_markdown()
             literal.append(line)
             continue
         flush_literal()
-        paragraph.append(line)
-    flush_paragraph()
+        list_active = False
+        markdown_lines.append(line)
+    flush_markdown()
     flush_literal()
-    flush_list()
     flush_math()
     return parts
 

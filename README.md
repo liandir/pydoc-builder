@@ -33,8 +33,21 @@ docstring:
 
 - **Structured (Google-style)** — used when the docstring contains any of the
   recognised section headings.
-- **Plain prose** — used otherwise; paragraphs render as `<p>`, and any
+- **Markdown prose** — used otherwise; paragraphs render as `<p>`, and any
   indented block becomes a literal `<pre>` code block.
+
+### Markdown in docstrings
+
+Prose in both plain and structured docstrings supports the same safe Markdown
+subset as the rendered README: headings, paragraphs, fenced code blocks,
+unordered and ordered lists, blockquotes, horizontal rules, pipe-style tables,
+inline code, links, **bold**, and *italic*. Markdown also works in field
+descriptions and in prose inside `Examples` sections.
+
+Markdown is intentionally left literal inside indented code blocks, doctest
+blocks, display-math blocks, field names, and type annotations. Backticked API
+symbols keep their existing cross-reference behavior. Summary cards render
+inline formatting but omit links because the entire card is already linked.
 
 ### Google-style sections
 
@@ -232,6 +245,7 @@ src/pydoc_builder/
   parsing.py       AST → ModuleDoc
   validation.py    Args coverage check
   docstrings.py    Google-style section parsing and rendering
+  markdown.py      safe Markdown block and inline rendering
   highlighting.py  tokenize-based Python syntax highlighter
   rendering.py     API object rendering, class index, source dropdown
   navigation.py    sidebars, TOC, source tree

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import html
 import os
-import re
 from collections.abc import Callable
 from pathlib import Path
 
@@ -74,22 +73,35 @@ def summary(docstring: str) -> str:
     return sentence + ("." if not sentence.endswith(".") else "")
 
 
-def card(href: str, title: str, detail: str = "") -> str:
+def card(
+    href: str,
+    title: str,
+    detail: str = "",
+    *,
+    detail_html: str = "",
+) -> str:
     """Render a fully-clickable module-list card with a title and optional detail.
 
     Args:
         href: Destination URL for the card link.
         title: Main label shown in the card.
-        detail: Optional secondary text shown beneath the title.
+        detail: Optional plain-text secondary text shown beneath the title.
+        detail_html: Optional pre-rendered secondary content. Used instead of
+            ``detail`` when provided.
 
     Returns:
         An ``<li class="card">`` HTML fragment.
     """
 
-    detail_html = f'<span class="card-detail">{escape(detail)}</span>' if detail else ""
+    rendered_detail = detail_html or escape(detail)
+    detail_fragment = (
+        f'<span class="card-detail">{rendered_detail}</span>'
+        if rendered_detail
+        else ""
+    )
     return (
         f'<li class="card"><a href="{escape(href)}">'
-        f'<span class="card-title">{escape(title)}</span>{detail_html}'
+        f'<span class="card-title">{escape(title)}</span>{detail_fragment}'
         '</a></li>'
     )
 
@@ -98,86 +110,22 @@ def inline_markup(
     text: str,
     resolver: Callable[[str], str | None] | None = None,
 ) -> str:
-    """Render inline code spans, autolinked URLs and symbol xrefs.
+    """Render inline markup from text previously processed by ``escape``.
 
-    Both ````double```` and ```single``` backtick runs become
-    ``<code>`` spans; double-backticks are processed first so a stray
-    backtick inside them is preserved as a literal.
+    This compatibility wrapper preserves the original helper contract while
+    delegating rendering to the shared Markdown implementation.
 
     Args:
-        text: HTML-escaped text containing optional backtick code runs and
-            bare ``http(s)://`` URLs.
-        resolver: Optional callback that turns a backticked token into an
-            href (e.g. ``#api-foo`` or ``../other.html#api-bar``). Tokens
-            that resolve are wrapped in ``<a class="api-xref">``.
+        text: HTML-escaped inline source.
+        resolver: Optional symbol resolver for inline code cross-references.
 
     Returns:
-        The rendered HTML string.
+        A safe HTML fragment containing inline Markdown.
     """
 
-    parts = text.split("``")
-    rendered: list[str] = []
-    for index, part in enumerate(parts):
-        if index % 2:
-            rendered.append(_code_span(part, resolver))
-        else:
-            rendered.append(_process_outside(part, resolver))
-    return "".join(rendered)
+    from .markdown import render_inline
 
-
-_SINGLE_BACKTICK = re.compile(r"`([^`]+)`")
-
-
-def _process_outside(text: str, resolver: Callable[[str], str | None] | None) -> str:
-    """Render single-backtick code spans and autolink URLs in the rest."""
-
-    pieces: list[str] = []
-    cursor = 0
-    for match in _SINGLE_BACKTICK.finditer(text):
-        pieces.append(_autolink_urls(text[cursor:match.start()]))
-        pieces.append(_code_span(match.group(1), resolver))
-        cursor = match.end()
-    pieces.append(_autolink_urls(text[cursor:]))
-    return "".join(pieces)
-
-
-def _code_span(content: str, resolver: Callable[[str], str | None] | None) -> str:
-    """Wrap ``content`` in ``<code>`` (and an xref ``<a>`` when ``resolver`` matches)."""
-
-    href = resolver(content) if resolver else None
-    if href:
-        return f'<a class="api-xref" href="{escape(href)}"><code>{content}</code></a>'
-    return f"<code>{content}</code>"
-
-
-_URL_PATTERN = re.compile(r"https?://\S+")
-_ENTITY_TAIL = re.compile(r"&(?:[A-Za-z]+|#\d+|#x[0-9A-Fa-f]+)$")
-
-
-def _autolink_urls(text: str) -> str:
-    """Wrap bare ``http(s)://`` URLs in escaped text with anchor tags."""
-
-    def link(match: re.Match[str]) -> str:
-        url = match.group(0)
-        trailing = ""
-        while url and url[-1] in ".,;:!?":
-            trailing = url[-1] + trailing
-            url = url[:-1]
-        while url.endswith(")") and url.count("(") < url.count(")"):
-            trailing = ")" + trailing
-            url = url[:-1]
-        # A stripped ';' may have closed an HTML entity inside the URL.
-        if trailing.startswith(";") and _ENTITY_TAIL.search(url):
-            url += ";"
-            trailing = trailing[1:]
-        if not url:
-            return match.group(0)
-        return (
-            f'<a href="{url}" target="_blank" rel="noopener noreferrer">{url}</a>'
-            f"{trailing}"
-        )
-
-    return _URL_PATTERN.sub(link, text)
+    return render_inline(html.unescape(text), resolver)
 
 
 def directory_index_path(config: BuildConfig, directory: Path) -> Path:

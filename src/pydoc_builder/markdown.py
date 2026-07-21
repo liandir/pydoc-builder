@@ -1,4 +1,4 @@
-"""Minimal markdown-to-HTML renderer for README files.
+"""Minimal markdown-to-HTML renderer for README and docstring prose.
 
 Supports a deliberate subset of CommonMark plus GFM tables — ATX headings,
 paragraphs, fenced code blocks, unordered and ordered lists, blockquotes,
@@ -11,13 +11,19 @@ from __future__ import annotations
 
 import html
 import re
+from collections.abc import Callable
+from urllib.parse import urlsplit
 
 
-def render_markdown(text: str) -> str:
+Resolver = Callable[[str], str | None]
+
+
+def render_markdown(text: str, resolver: Resolver | None = None) -> str:
     """Render markdown ``text`` to an HTML fragment.
 
     Args:
         text: Markdown source to convert.
+        resolver: Optional symbol resolver for inline code cross-references.
 
     Returns:
         An HTML string containing one element per parsed block, joined by
@@ -25,7 +31,7 @@ def render_markdown(text: str) -> str:
     """
 
     blocks = _parse_blocks(text.splitlines())
-    return "\n".join(_render_block(block) for block in blocks)
+    return "\n".join(_render_block(block, resolver) for block in blocks)
 
 
 def _parse_blocks(lines: list[str]) -> list[tuple]:
@@ -38,11 +44,11 @@ def _parse_blocks(lines: list[str]) -> list[tuple]:
         if not line.strip():
             i += 1
             continue
-        if line.startswith("```"):
-            lang = line[3:].strip()
+        if line.lstrip().startswith("```"):
+            lang = line.lstrip()[3:].strip()
             i += 1
             code_lines: list[str] = []
-            while i < len(lines) and not lines[i].startswith("```"):
+            while i < len(lines) and not lines[i].lstrip().startswith("```"):
                 code_lines.append(lines[i])
                 i += 1
             i += 1
@@ -69,8 +75,8 @@ def _parse_blocks(lines: list[str]) -> list[tuple]:
             items, i = _collect_list(lines, i, r"^\s*[-*+]\s+(.+)$")
             blocks.append(("ul", items))
             continue
-        if re.match(r"^\s*\d+\.\s+", line):
-            items, i = _collect_list(lines, i, r"^\s*\d+\.\s+(.+)$")
+        if re.match(r"^\s*\d+[.)]\s+", line):
+            items, i = _collect_list(lines, i, r"^\s*\d+[.)]\s+(.+)$")
             blocks.append(("ol", items))
             continue
         table = _try_parse_table(lines, i)
@@ -198,24 +204,24 @@ def _starts_block(line: str) -> bool:
     """Return whether ``line`` starts a non-paragraph block."""
 
     return (
-        line.startswith("```")
+        line.lstrip().startswith("```")
         or bool(re.match(r"^#{1,6}\s+", line))
         or bool(re.match(r"^(\*{3,}|-{3,}|_{3,})\s*$", line))
         or line.startswith(">")
         or bool(re.match(r"^\s*[-*+]\s+", line))
-        or bool(re.match(r"^\s*\d+\.\s+", line))
+        or bool(re.match(r"^\s*\d+[.)]\s+", line))
     )
 
 
-def _render_block(block: tuple) -> str:
+def _render_block(block: tuple, resolver: Resolver | None = None) -> str:
     """Render one parsed block tuple to HTML."""
 
     kind = block[0]
     if kind == "heading":
         level, text = block[1], block[2]
-        return f"<h{level}>{_inline(text)}</h{level}>"
+        return f"<h{level}>{render_inline(text, resolver)}</h{level}>"
     if kind == "paragraph":
-        return f"<p>{_inline(block[1])}</p>"
+        return f"<p>{render_inline(block[1], resolver)}</p>"
     if kind == "code":
         lang, code = block[1], block[2]
         cls = f' class="language-{html.escape(lang)}"' if lang else ""
@@ -241,20 +247,20 @@ def _render_block(block: tuple) -> str:
     if kind == "hr":
         return "<hr>"
     if kind == "blockquote":
-        return f"<blockquote>{_inline(block[1])}</blockquote>"
+        return f"<blockquote>{render_inline(block[1], resolver)}</blockquote>"
     if kind in ("ul", "ol"):
-        items = "".join(f"<li>{_inline(item)}</li>" for item in block[1])
+        items = "".join(f"<li>{render_inline(item, resolver)}</li>" for item in block[1])
         return f"<{kind}>{items}</{kind}>"
     if kind == "table":
         headers, aligns, rows = block[1], block[2], block[3]
         head = "".join(
-            f'<th{_align_attr(align)}>{_inline(cell)}</th>'
+            f'<th{_align_attr(align)}>{render_inline(cell, resolver)}</th>'
             for cell, align in zip(headers, aligns)
         )
         body = "".join(
             "<tr>"
             + "".join(
-                f'<td{_align_attr(align)}>{_inline(cell)}</td>'
+                f'<td{_align_attr(align)}>{render_inline(cell, resolver)}</td>'
                 for cell, align in zip(row, aligns)
             )
             + "</tr>"
@@ -278,29 +284,127 @@ def _align_attr(align: str) -> str:
     return f' style="text-align: {align}"' if align else ""
 
 
-_CODE = re.compile(r"`([^`]+)`")
+_DOUBLE_CODE = re.compile(r"``([^\r\n]+?)``")
+_SINGLE_CODE = re.compile(r"`([^`\r\n]+)`")
 _LINK = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 _BOLD = re.compile(r"\*\*([^*]+?)\*\*")
 _ITALIC = re.compile(r"(?<![\*\w])\*([^*\s][^*]*?)\*(?![\*\w])")
 
 
-def _inline(text: str) -> str:
-    """Apply inline transforms (code, links, bold, italic) to a text run."""
+def render_inline(
+    text: str,
+    resolver: Resolver | None = None,
+    *,
+    allow_links: bool = True,
+) -> str:
+    """Render safe inline Markdown from an unescaped text run.
 
-    stash: list[str] = []
+    Single and double backticks produce code spans. A resolved code token is
+    linked to its API object. When ``allow_links`` is false, Markdown links
+    are reduced to their visible labels and bare URLs remain plain text; this
+    is useful inside summary cards that are already wrapped in an anchor.
+
+    Args:
+        text: Unescaped inline Markdown source.
+        resolver: Optional symbol resolver for inline code cross-references.
+        allow_links: Whether to emit anchors for Markdown links and bare URLs.
+
+    Returns:
+        A safe HTML fragment containing only inline elements.
+    """
+
+    code_stash: list[str] = []
+    link_stash: list[str] = []
 
     def stash_code(match: re.Match[str]) -> str:
-        stash.append(html.escape(match.group(1)))
-        return f"\x00{len(stash) - 1}\x00"
+        content = match.group(1)
+        content_html = html.escape(content)
+        href = resolver(content) if resolver else None
+        if href:
+            rendered = (
+                f'<a class="api-xref" href="{html.escape(href, quote=True)}">'
+                f"<code>{content_html}</code></a>"
+            )
+        else:
+            rendered = f"<code>{content_html}</code>"
+        code_stash.append(rendered)
+        return f"\x00C{len(code_stash) - 1}\x00"
 
-    text = _CODE.sub(stash_code, text)
-    text = html.escape(text)
-    text = _LINK.sub(
-        lambda m: f'<a href="{html.escape(m.group(2), quote=True)}">{m.group(1)}</a>',
-        text,
+    protected = _DOUBLE_CODE.sub(stash_code, text)
+    protected = _SINGLE_CODE.sub(stash_code, protected)
+
+    def stash_link(match: re.Match[str]) -> str:
+        label, destination = match.group(1), match.group(2).strip()
+        label_html = _format_inline_text(label, autolink=False)
+        if allow_links and _is_safe_link(destination):
+            rendered = (
+                f'<a href="{html.escape(destination, quote=True)}">'
+                f"{label_html}</a>"
+            )
+        elif allow_links:
+            return match.group(0)
+        else:
+            rendered = label_html
+        link_stash.append(rendered)
+        return f"\x00L{len(link_stash) - 1}\x00"
+
+    protected = _LINK.sub(stash_link, protected)
+    rendered = _format_inline_text(protected, autolink=allow_links)
+    for index, link_html in enumerate(link_stash):
+        rendered = rendered.replace(f"\x00L{index}\x00", link_html)
+    for index, code_html in enumerate(code_stash):
+        rendered = rendered.replace(f"\x00C{index}\x00", code_html)
+    return rendered
+
+
+def _format_inline_text(text: str, *, autolink: bool) -> str:
+    """Escape text and apply emphasis plus optional bare-URL linking."""
+
+    rendered = html.escape(text)
+    url_stash: list[str] = []
+    if autolink:
+        def stash_url(match: re.Match[str]) -> str:
+            url_stash.append(_render_bare_url(match))
+            return f"\x00U{len(url_stash) - 1}\x00"
+
+        rendered = _URL_PATTERN.sub(stash_url, rendered)
+    rendered = _BOLD.sub(r"<strong>\1</strong>", rendered)
+    rendered = _ITALIC.sub(r"<em>\1</em>", rendered)
+    for index, url_html in enumerate(url_stash):
+        rendered = rendered.replace(f"\x00U{index}\x00", url_html)
+    return rendered
+
+
+_URL_PATTERN = re.compile(r"https?://[^\s*]+")
+_ENTITY_TAIL = re.compile(r"&(?:[A-Za-z]+|#\d+|#x[0-9A-Fa-f]+)$")
+
+
+def _render_bare_url(match: re.Match[str]) -> str:
+    """Render one bare HTTP(S) URL matched in already-escaped text."""
+
+    url = match.group(0)
+    trailing = ""
+    while url and url[-1] in ".,;:!?":
+        trailing = url[-1] + trailing
+        url = url[:-1]
+    while url.endswith(")") and url.count("(") < url.count(")"):
+        trailing = ")" + trailing
+        url = url[:-1]
+    if trailing.startswith(";") and _ENTITY_TAIL.search(url):
+        url += ";"
+        trailing = trailing[1:]
+    if not url:
+        return match.group(0)
+    return (
+        f'<a href="{url}" target="_blank" rel="noopener noreferrer">{url}</a>'
+        f"{trailing}"
     )
-    text = _BOLD.sub(r"<strong>\1</strong>", text)
-    text = _ITALIC.sub(r"<em>\1</em>", text)
-    for i, code in enumerate(stash):
-        text = text.replace(f"\x00{i}\x00", f"<code>{code}</code>", 1)
-    return text
+
+
+def _is_safe_link(destination: str) -> bool:
+    """Return whether a Markdown link target is safe to place in ``href``."""
+
+    if not destination or any(ord(ch) < 32 for ch in destination):
+        return False
+    scheme = urlsplit(destination).scheme.lower()
+    return not scheme or scheme in {"http", "https", "mailto"}

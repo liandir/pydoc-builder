@@ -62,15 +62,17 @@ _CSS = """
     .readme h2 { font-size: 1.3rem; margin-top: 1.4rem; }
     .readme h3 { font-size: 1.1rem; margin-top: 1.2rem; }
     .readme p { margin: 0.7rem 0; }
-    .readme ul, .readme ol { margin: 0.7rem 0; padding-left: 1.5rem; }
-    .readme li { margin: 0.25rem 0; }
+    .readme ul, .readme ol,
+    .docstring ul, .docstring ol { margin: 0.7rem 0; padding-left: 1.5rem; }
+    .readme li, .docstring li { margin: 0.25rem 0; }
     .readme code {
       background: var(--panel);
       padding: 0.1em 0.32em;
       border-radius: 4px;
       font-size: 0.92em;
     }
-    .readme pre {
+    .readme pre,
+    .docstring .code-block > pre {
       background: var(--panel);
       padding: 0.85rem 1rem;
       border-radius: 8px;
@@ -78,9 +80,12 @@ _CSS = """
       overflow-x: auto;
       margin: 0.85rem 0;
     }
-    .readme pre code { background: none; padding: 0; font-size: 0.92em; }
-    .readme .code-block { position: relative; margin: 0.85rem 0; }
-    .readme .code-block > pre { margin: 0; }
+    .readme pre code,
+    .docstring .code-block > pre code { background: none; padding: 0; font-size: 0.92em; }
+    .readme .code-block,
+    .docstring .code-block { position: relative; margin: 0.85rem 0; }
+    .readme .code-block > pre,
+    .docstring .code-block > pre { margin: 0; }
     .copy-btn {
       position: absolute;
       top: 0.4rem;
@@ -107,29 +112,34 @@ _CSS = """
     .copy-btn:focus-visible { opacity: 1; }
     .copy-btn:hover { color: var(--accent-dark); border-color: var(--accent); }
     .copy-btn.copied { color: var(--accent-dark); border-color: var(--accent); opacity: 1; }
-    .readme blockquote {
+    .readme blockquote,
+    .docstring blockquote {
       border-left: 3px solid var(--accent);
       padding: 0.1rem 0 0.1rem 0.9rem;
       margin: 0.85rem 0;
       color: var(--muted);
     }
-    .readme hr {
+    .readme hr,
+    .docstring hr {
       border: 0;
       border-top: 1px solid var(--line);
       margin: 1.5rem 0;
     }
-    .readme table {
+    .readme table,
+    .docstring table {
       border-collapse: collapse;
       margin: 0.85rem 0;
       font-size: 0.95em;
     }
-    .readme th, .readme td {
+    .readme th, .readme td,
+    .docstring th, .docstring td {
       border: 1px solid var(--line);
       padding: 0.4rem 0.7rem;
       text-align: left;
       vertical-align: top;
     }
-    .readme thead th {
+    .readme thead th,
+    .docstring thead th {
       background: var(--panel);
       font-weight: 600;
     }
@@ -346,6 +356,19 @@ _CSS = """
     .docstring {
       margin: 0.7rem 0 1.1rem;
     }
+    .docstring h1,
+    .docstring h2,
+    .docstring h3,
+    .docstring h4,
+    .docstring h5,
+    .docstring h6 {
+      max-width: none;
+      margin: 1.2rem 0 0.55rem;
+    }
+    .docstring h1 { font-size: 1.35rem; }
+    .docstring h2 { font-size: 1.25rem; }
+    .docstring h3 { font-size: 1.15rem; }
+    .docstring h4, .docstring h5, .docstring h6 { font-size: 1rem; }
     .structured-docstring {
       white-space: normal;
       overflow-x: visible;

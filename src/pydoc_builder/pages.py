@@ -7,7 +7,7 @@ import shutil
 from .config import BuildConfig
 from .docstrings import doc_block
 from .layout import page
-from .markdown import render_markdown
+from .markdown import render_inline, render_markdown
 from .models import ModuleDoc
 from .navigation import sidebar
 from .rendering import class_index, heading_with_source, render_object, xref_resolver
@@ -70,7 +70,7 @@ def write_site_index(config: BuildConfig, modules: list[ModuleDoc]) -> None:
         card(
             rel_link(site_index, module.page_path),
             module.source_rel.name,
-            summary(module.docstring),
+            detail_html=render_inline(summary(module.docstring), allow_links=False),
         )
         for module in extra_file_modules(config, modules)
     ]
@@ -201,7 +201,7 @@ def _write_directory_page(
         card(
             rel_link(current_path, module.page_path),
             module.source_rel.name,
-            summary(module.docstring),
+            detail_html=render_inline(summary(module.docstring), allow_links=False),
         )
         for module in child_modules
     )
