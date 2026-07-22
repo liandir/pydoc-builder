@@ -74,8 +74,8 @@ Args:
     other_name: description without a type.
 
 Returns:
-    type: description. (The "name" slot is treated as the type
-        when only one token precedes the colon.)
+    dict[str, int]: description. (A bare Python type expression before
+        the colon is treated as the return type.)
 
 Raises:
     ValueError: when the input is malformed.

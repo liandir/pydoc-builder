@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
-from pydoc_builder.docstrings import doc_block
+from pydoc_builder.docstrings import _parse_return_fields, doc_block
 
 
 class DocstringMarkdownTests(unittest.TestCase):
@@ -82,6 +82,71 @@ class DocstringMarkdownTests(unittest.TestCase):
         self.assertIn("Use <strong>carefully</strong>.", rendered)
         self.assertIn('&gt;&gt;&gt; print(&quot;**not emphasis**&quot;)', rendered)
         self.assertNotIn("<strong>not emphasis</strong>", rendered)
+
+    def test_composite_return_type_is_not_rendered_as_description_text(self) -> None:
+        rendered = doc_block(
+            "Returns:\n    dict[str, list[int]]: Values grouped by name.",
+            return_annotation="dict[str, list[int]]",
+        )
+
+        self.assertIn('class="doc-return-type"', rendered)
+        self.assertIn("<dd><p>Values grouped by name.</p></dd>", rendered)
+        self.assertNotIn("dict[str, list[int]]: Values grouped by name.", rendered)
+
+    def test_return_parser_handles_composite_named_and_continued_fields(self) -> None:
+        fields = _parse_return_fields(
+            [
+                '    Literal["a:b"]: A literal value.',
+                '        Note: the colon inside the literal is preserved.',
+                (
+                    '    result (Callable[[int], tuple[int, str]]): '
+                    'A named result.'
+                ),
+                '    str | None: An optional value.',
+            ]
+        )
+
+        self.assertEqual(
+            [
+                {
+                    "name": "",
+                    "type": 'Literal["a:b"]',
+                    "description": (
+                        "A literal value.\n"
+                        "Note: the colon inside the literal is preserved."
+                    ),
+                },
+                {
+                    "name": "result",
+                    "type": "Callable[[int], tuple[int, str]]",
+                    "description": "A named result.",
+                },
+                {
+                    "name": "",
+                    "type": "str | None",
+                    "description": "An optional value.",
+                },
+            ],
+            fields,
+        )
+
+    def test_descriptive_return_text_with_a_colon_is_not_treated_as_a_type(self) -> None:
+        fields = _parse_return_fields(
+            ["    Process exit code: ``0`` on success, ``1`` on failure."]
+        )
+
+        self.assertEqual(
+            [
+                {
+                    "name": "",
+                    "type": "",
+                    "description": (
+                        "Process exit code: ``0`` on success, ``1`` on failure."
+                    ),
+                }
+            ],
+            fields,
+        )
 
 
 if __name__ == "__main__":

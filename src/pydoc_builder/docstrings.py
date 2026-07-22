@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import re
 from collections.abc import Callable
 
@@ -353,12 +354,87 @@ def _render_examples_section(lines: list[str], resolver: Resolver | None = None)
 def _parse_return_fields(lines: list[str]) -> list[dict[str, str]]:
     """Parse return or yield section lines as typed values."""
 
-    fields = parse_doc_fields(lines)
-    for field in fields:
-        if field["name"] and not field["type"]:
-            field["type"] = field["name"]
-            field["name"] = ""
+    fields: list[dict[str, str]] = []
+    current: dict[str, str] | None = None
+    field_indent: int | None = None
+    for raw_line in lines:
+        if not raw_line.strip():
+            continue
+        line = raw_line.strip()
+        indent = len(raw_line) - len(raw_line.lstrip())
+        candidate = _parse_return_field(line)
+        starts_field = bool(candidate["type"]) and (
+            current is None or field_indent is None or indent <= field_indent
+        )
+        if starts_field:
+            if current is not None:
+                fields.append(current)
+            current = candidate
+            field_indent = indent
+            continue
+        if current is None:
+            current = candidate
+            field_indent = indent
+            continue
+        sep = "\n" if current["description"] else ""
+        current["description"] = f'{current["description"]}{sep}{line}'
+    if current is not None:
+        fields.append(current)
     return fields
+
+
+def _parse_return_field(line: str) -> dict[str, str]:
+    """Parse one return field, accepting composite Python type expressions."""
+
+    split = _split_field_line(line)
+    if split is None:
+        return {"name": "", "type": "", "description": line}
+    head, description = split
+    name = ""
+    type_name = head
+    if head.endswith(")") and "(" in head:
+        name_part, _, type_part = head.partition("(")
+        possible_name = name_part.strip()
+        if re.fullmatch(r"\*{0,2}[A-Za-z_]\w*", possible_name):
+            name = possible_name
+            type_name = type_part[:-1].strip()
+            return {"name": name, "type": type_name, "description": description}
+    try:
+        ast.parse(head, mode="eval")
+    except SyntaxError:
+        return {"name": "", "type": "", "description": line}
+    return {"name": name, "type": type_name, "description": description}
+
+
+def _split_field_line(line: str) -> tuple[str, str] | None:
+    """Split at the first colon outside brackets and quoted strings."""
+
+    brackets: list[str] = []
+    quote = ""
+    escaped = False
+    pairs = {")": "(", "]": "[", "}": "{"}
+    for index, char in enumerate(line):
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = ""
+            continue
+        if char in {'"', "'"}:
+            quote = char
+        elif char in "([{":
+            brackets.append(char)
+        elif char in pairs:
+            if brackets and brackets[-1] == pairs[char]:
+                brackets.pop()
+        elif char == ":" and not brackets:
+            head = line[:index].strip()
+            if head:
+                return head, line[index + 1:].strip()
+            return None
+    return None
 
 
 def _looks_like_field(line: str) -> bool:
