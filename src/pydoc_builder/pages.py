@@ -258,11 +258,15 @@ def _write_module_page(
     module.page_path.parent.mkdir(parents=True, exist_ok=True)
     resolver = xref_resolver(module, modules)
     objects = "\n".join(render_object(obj, module, classes, resolver, config.autofill_types) for obj in module.objects)
+    heading_html = heading_with_source(
+        f"<h1>{escape(module.module_name)}</h1>",
+        module.full_source,
+    )
     body = f"""
     {sidebar(config, module.page_path, modules, current_rel=module.source_rel, is_module_page=True, toc_objects=module.objects)}
     <main class="content">
       <p class="eyebrow">{escape(module.source_rel.as_posix())}</p>
-      <h1>{escape(module.module_name)}</h1>
+      {heading_html}
       {doc_block(module.docstring, resolver)}
       {objects or '<p class="muted">No public classes or functions found.</p>'}
     </main>

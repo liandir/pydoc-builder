@@ -19,7 +19,7 @@ class MarkdownBuildTests(unittest.TestCase):
             package_dir.mkdir(parents=True)
             (package_dir / "__init__.py").write_text('"""Example package."""\n', encoding="utf-8")
             (package_dir / "sample.py").write_text(
-                '"""Uses **bold** and *italic*."""\n',
+                '"""Uses **bold** and *italic*."""\nVALUE = 42\n',
                 encoding="utf-8",
             )
             docs_dir = project_root / "docs"
@@ -43,6 +43,14 @@ class MarkdownBuildTests(unittest.TestCase):
         expected = "Uses <strong>bold</strong> and <em>italic</em>."
         self.assertIn(f"<p>{expected}</p>", module_html)
         self.assertIn(f'<span class="card-detail">{expected}</span>', package_html)
+        self.assertIn(
+            '<div class="summary-heading"><h1>example.sample</h1></div>',
+            module_html,
+        )
+        self.assertIn('<span class="source-toggle">Source', module_html)
+        self.assertIn('<pre class="source-gutter" aria-hidden="true">1\n2</pre>', module_html)
+        self.assertIn("VALUE", module_html)
+        self.assertIn("42", module_html)
 
 
 if __name__ == "__main__":
